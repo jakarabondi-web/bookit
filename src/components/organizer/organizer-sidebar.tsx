@@ -21,52 +21,88 @@ import {
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
-const NAV = [
-  { href: "/organizer", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/organizer/events", label: "Events", icon: CalendarDays },
-  { href: "/organizer/bookings", label: "Bookings", icon: Receipt },
-  { href: "/organizer/guests", label: "Guest Lists", icon: UsersRound },
-  { href: "/organizer/orders", label: "Orders", icon: Receipt },
-  { href: "/organizer/tickets", label: "Tickets", icon: Ticket },
-  { href: "/organizer/customers", label: "Customers", icon: Users },
-  { href: "/organizer/marketing", label: "Marketing", icon: Megaphone },
-  { href: "/organizer/checkin", label: "Check-In", icon: ScanLine },
-  { href: "/organizer/finance", label: "Finance", icon: CreditCard },
-  { href: "/organizer/payouts", label: "Payouts", icon: Wallet },
-  { href: "/organizer/analytics", label: "Analytics", icon: BarChart3 },
-  { href: "/organizer/team", label: "Team", icon: Users },
-  { href: "/organizer/settings", label: "Settings", icon: Settings },
+/**
+ * Fifteen destinations was a flat wall; grouped by what the organizer is
+ * doing — selling, running the door, moving money, growing — scanning gets
+ * cheap. The groups are the USIKU dashboard's information architecture.
+ */
+const NAV_GROUPS = [
+  {
+    label: "Sell",
+    items: [
+      { href: "/organizer", label: "Overview", icon: LayoutDashboard },
+      { href: "/organizer/events", label: "Events", icon: CalendarDays },
+      { href: "/organizer/tickets", label: "Tickets", icon: Ticket },
+      { href: "/organizer/orders", label: "Orders", icon: Receipt },
+    ],
+  },
+  {
+    label: "Run",
+    items: [
+      { href: "/organizer/checkin", label: "Check-In", icon: ScanLine },
+      { href: "/organizer/guests", label: "Guest Lists", icon: UsersRound },
+      { href: "/organizer/bookings", label: "Bookings", icon: Receipt },
+      { href: "/organizer/customers", label: "Customers", icon: Users },
+    ],
+  },
+  {
+    label: "Money",
+    items: [
+      { href: "/organizer/payouts", label: "Payouts", icon: Wallet },
+      { href: "/organizer/finance", label: "Finance", icon: CreditCard },
+    ],
+  },
+  {
+    label: "Grow",
+    items: [
+      { href: "/organizer/analytics", label: "Analytics", icon: BarChart3 },
+      { href: "/organizer/marketing", label: "Marketing", icon: Megaphone },
+      { href: "/organizer/team", label: "Team", icon: Users },
+      { href: "/organizer/settings", label: "Settings", icon: Settings },
+    ],
+  },
 ] as const;
 
 function NavList({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
 
   return (
-    <ul className="flex flex-col gap-0.5">
-      {NAV.map((item) => {
-        const active =
-          item.href === "/organizer" ? pathname === "/organizer" : pathname.startsWith(item.href);
-        const Icon = item.icon;
-        return (
-          <li key={item.href}>
-            <Link
-              href={item.href}
-              onClick={onNavigate}
-              aria-current={active ? "page" : undefined}
-              className={cn(
-                "flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium transition-colors",
-                active
-                  ? "bg-primary-tint text-primary-hover"
-                  : "text-ink-secondary hover:bg-surface-secondary hover:text-ink",
-              )}
-            >
-              <Icon className="size-4 shrink-0" aria-hidden="true" />
-              {item.label}
-            </Link>
-          </li>
-        );
-      })}
-    </ul>
+    <nav aria-label="Organizer">
+      {NAV_GROUPS.map((group) => (
+        <div key={group.label} className="mb-1.5">
+          <p className="px-3 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">
+            {group.label}
+          </p>
+          <ul className="flex flex-col gap-0.5">
+            {group.items.map((item) => {
+              const active =
+                item.href === "/organizer"
+                  ? pathname === "/organizer"
+                  : pathname.startsWith(item.href);
+              const Icon = item.icon;
+              return (
+                <li key={item.href}>
+                  <Link
+                    href={item.href}
+                    onClick={onNavigate}
+                    aria-current={active ? "page" : undefined}
+                    className={cn(
+                      "flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium transition-colors",
+                      active
+                        ? "bg-primary-tint text-primary-hover shadow-[inset_2px_0_0_var(--color-primary)]"
+                        : "text-ink-secondary hover:bg-surface-secondary hover:text-ink",
+                    )}
+                  >
+                    <Icon className="size-4 shrink-0" aria-hidden="true" />
+                    {item.label}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ))}
+    </nav>
   );
 }
 

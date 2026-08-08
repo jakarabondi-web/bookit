@@ -95,14 +95,21 @@ export default async function VenuesPage({
         <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {rows.map(({ venue, upcoming }) => (
             <li key={venue.id}>
-              <Card className="h-full overflow-hidden transition-colors hover:border-primary/40">
+              {/* The whole card is the link — a title-only target is a
+                  fiddly tap on mobile and reads as inert on desktop. */}
+              <Link
+                href={`/events?city=${encodeURIComponent(venue.city)}`}
+                className="group block h-full"
+                aria-label={`${venue.name} — events in ${venue.city}`}
+              >
+              <Card className="h-full overflow-hidden transition-colors group-hover:border-primary/40">
                 <div className="relative aspect-[16/9] bg-surface-secondary">
                   <Image
                     src={venueImage(venue.id)}
                     alt=""
                     fill
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                    className="object-cover"
+                    className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
                   />
                   {/* Legibility scrim behind the badge, photo stays the hero. */}
                   <div
@@ -118,13 +125,8 @@ export default async function VenuesPage({
                   </span>
                 </div>
                 <CardContent className="p-5">
-                  <h2 className="text-base font-semibold text-ink">
-                    <Link
-                      href={`/events?city=${encodeURIComponent(venue.city)}`}
-                      className="hover:text-primary"
-                    >
-                      {venue.name}
-                    </Link>
+                  <h2 className="text-base font-semibold text-ink transition-colors group-hover:text-primary">
+                    {venue.name}
                   </h2>
 
                   <dl className="mt-3 flex flex-col gap-1.5 text-sm text-ink-secondary">
@@ -153,6 +155,7 @@ export default async function VenuesPage({
                   ) : null}
                 </CardContent>
               </Card>
+              </Link>
             </li>
           ))}
         </ul>

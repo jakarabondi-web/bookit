@@ -632,8 +632,8 @@ const seedEvents: SeedEvent[] = [
       venueId: "ven_uhuru",
       startsAt: at(SUNDAY, 12),
       endsAt: at(SUNDAY, 20),
-      heroImage: `${IMG}/hero-concert.jpg`,
-      cardImage: `${IMG}/hero-concert.jpg`,
+      heroImage: `${IMG}/venue-gardens.jpg`,
+      cardImage: `${IMG}/venue-gardens.jpg`,
       capacity: null,
       policies: policies({ resaleEnabled: true, resaleMaxMarkupBps: 1500 }),
       agenda: [
@@ -695,8 +695,8 @@ const seedEvents: SeedEvent[] = [
       venueId: "ven_mombasa_beach",
       startsAt: at(21, 14),
       endsAt: at(22, 23),
-      heroImage: `${IMG}/hero-concert.jpg`,
-      cardImage: `${IMG}/hero-concert.jpg`,
+      heroImage: `${IMG}/venue-beach.jpg`,
+      cardImage: `${IMG}/venue-beach.jpg`,
       capacity: null,
       policies: policies(),
       agenda: [],
@@ -724,8 +724,8 @@ const seedEvents: SeedEvent[] = [
       venueId: "ven_kisumu",
       startsAt: at(SUNDAY + 7, 15),
       endsAt: at(SUNDAY + 7, 17),
-      heroImage: `${IMG}/event-football.jpg`,
-      cardImage: `${IMG}/event-football.jpg`,
+      heroImage: `${IMG}/venue-sports-ground.jpg`,
+      cardImage: `${IMG}/venue-sports-ground.jpg`,
       capacity: null,
       policies: policies(),
       agenda: [],
@@ -829,8 +829,8 @@ const seedEvents: SeedEvent[] = [
       featured: false,
     }),
     ticketTypes: [
-      { id: "tt_summit_std", name: "Delegate", priceMajor: 4500, quantity: 3000, sold: 1140, sectionId: "sec_bicc_expo" },
-      { id: "tt_summit_exec", name: "Executive", description: "Reserved auditorium seating, speaker lounge and lunch.", priceMajor: 12500, quantity: 400, sold: 168, sectionId: "sec_bicc_aud", maxPerOrder: 5 },
+      { id: "tt_eats_std", name: "Delegate", priceMajor: 4500, quantity: 3000, sold: 1140, sectionId: "sec_bicc_expo" },
+      { id: "tt_eats_exec", name: "Executive", description: "Reserved auditorium seating, speaker lounge and lunch.", priceMajor: 12500, quantity: 400, sold: 168, sectionId: "sec_bicc_aud", maxPerOrder: 5 },
     ],
   },
   {
@@ -850,8 +850,8 @@ const seedEvents: SeedEvent[] = [
       venueId: "ven_uhuru",
       startsAt: at(SATURDAY, 7),
       endsAt: at(SATURDAY, 12),
-      heroImage: `${IMG}/city-nairobi.jpg`,
-      cardImage: `${IMG}/city-nairobi.jpg`,
+      heroImage: `${IMG}/venue-gardens.jpg`,
+      cardImage: `${IMG}/venue-gardens.jpg`,
       capacity: 300,
       policies: policies({ transferAllowed: false }),
       agenda: [],
@@ -952,8 +952,8 @@ const seedEvents: SeedEvent[] = [
       venueId: "ven_westlands_office",
       startsAt: at(SATURDAY, 10),
       endsAt: at(SATURDAY, 13),
-      heroImage: `${IMG}/event-conference.jpg`,
-      cardImage: `${IMG}/event-conference.jpg`,
+      heroImage: `${IMG}/venue-boardroom.jpg`,
+      cardImage: `${IMG}/venue-boardroom.jpg`,
       capacity: 30,
       policies: policies({
         transferAllowed: false,
@@ -991,8 +991,8 @@ const seedEvents: SeedEvent[] = [
       venueId: "ven_safari_park",
       startsAt: at(SATURDAY + 21, 17),
       endsAt: at(SATURDAY + 21, 23),
-      heroImage: `${IMG}/hero-banquet.jpg`,
-      cardImage: `${IMG}/hero-banquet.jpg`,
+      heroImage: `${IMG}/venue-ballroom.jpg`,
+      cardImage: `${IMG}/venue-ballroom.jpg`,
       capacity: 220,
       policies: policies({
         transferAllowed: false,
@@ -1077,8 +1077,8 @@ const seedEvents: SeedEvent[] = [
       venueId: "ven_nakuru",
       startsAt: at(SATURDAY + 28, 14),
       endsAt: at(SATURDAY + 28, 22),
-      heroImage: `${IMG}/event-conference.jpg`,
-      cardImage: `${IMG}/event-conference.jpg`,
+      heroImage: `${IMG}/venue-club-lawn.jpg`,
+      cardImage: `${IMG}/venue-club-lawn.jpg`,
       capacity: 400,
       policies: policies({ transferAllowed: false }),
       agenda: [],
@@ -1103,8 +1103,8 @@ const seedEvents: SeedEvent[] = [
       venueId: "ven_westlands_office",
       startsAt: at(3, 8),
       endsAt: at(3, 18),
-      heroImage: `${IMG}/event-conference.jpg`,
-      cardImage: `${IMG}/event-conference.jpg`,
+      heroImage: `${IMG}/venue-boardroom.jpg`,
+      cardImage: `${IMG}/venue-boardroom.jpg`,
       capacity: 40,
       policies: policies({ transferAllowed: false }),
       agenda: [],
@@ -1128,8 +1128,8 @@ const seedEvents: SeedEvent[] = [
       venueId: "ven_eldoret",
       startsAt: at(24, 6, 30),
       endsAt: at(24, 12),
-      heroImage: `${IMG}/event-football.jpg`,
-      cardImage: `${IMG}/event-football.jpg`,
+      heroImage: `${IMG}/venue-fairway.jpg`,
+      cardImage: `${IMG}/venue-fairway.jpg`,
       capacity: null,
       policies: policies({ transferAllowed: true }),
       agenda: [],
@@ -1206,6 +1206,7 @@ export function seedDatabase(db: MemoryDb): void {
   seedBookingsAndGuests(db);
   seedInvites(db);
   seedConsumerHistory(db);
+  seedSalesHistory(db);
   seedContributions(db);
   seedLedger(db);
   seedPrivateEvents(db);
@@ -1841,6 +1842,153 @@ function seedConsumerHistory(db: MemoryDb): void {
     soldAt: null,
   };
   db.listings.set(listing.id, listing);
+}
+
+/**
+ * Thirty days of sales across SoundCity's on-sale events, so the organizer
+ * dashboard and analytics read like a working promoter's book instead of a
+ * handful of demo orders.
+ *
+ * Deterministic by construction — a fixed-seed LCG, never Math.random — so
+ * every boot produces the same history and tests stay reproducible. Ledger
+ * entries post automatically: `seedLedger` runs after this and mirrors every
+ * PAID/FULFILLED order, which keeps the finance page and payout balances in
+ * exact agreement with what analytics charts from the same orders.
+ *
+ * The shapes are opinionated on purpose: Burna Boy climbs toward show day,
+ * Sauti Sol sells steadily, Blankets & Wine cools off in the final week (the
+ * dashboard's pace warning has to point at something real), comedy ticks
+ * over, and the coast festival is early and small. Weekends spike ~40%.
+ */
+function seedSalesHistory(db: MemoryDb): void {
+  let lcgState = 20260808;
+  const rand = (): number => {
+    lcgState = (lcgState * 1664525 + 1013904223) >>> 0;
+    return lcgState / 2 ** 32;
+  };
+  const pick = <T,>(items: readonly T[]): T => items[Math.floor(rand() * items.length)]!;
+
+  interface Line {
+    eventId: string;
+    /** [ticketTypeId, unit price, weight] — weight is a relative pick rate. */
+    types: Array<[string, number, number]>;
+    /** Average orders per day at the start of the window. */
+    base: number;
+    /** Multiplier applied linearly by day 30 (2 = doubled by now). */
+    trend: number;
+  }
+
+  const LINES: Line[] = [
+    {
+      eventId: "evt_burna",
+      types: [
+        ["tt_burna_ga", 2500, 7],
+        ["tt_burna_vip", 8500, 2],
+        ["tt_burna_vvip", 20000, 0.4],
+      ],
+      base: 3.2,
+      trend: 2.1,
+    },
+    {
+      eventId: "evt_sauti_sol",
+      types: [
+        ["tt_sauti_ga", 1200, 8],
+        ["tt_sauti_vip", 4000, 2],
+      ],
+      base: 3.0,
+      trend: 1.4,
+    },
+    {
+      eventId: "evt_blankets",
+      types: [
+        ["tt_bw_ga", 1000, 8],
+        ["tt_bw_vip", 6500, 1.5],
+      ],
+      base: 2.8,
+      trend: 0.35,
+    },
+    {
+      eventId: "evt_comedy",
+      types: [["tt_comedy_ga", 1500, 1]],
+      base: 1.4,
+      trend: 1.1,
+    },
+    {
+      eventId: "evt_coast_festival",
+      types: [
+        ["tt_nyali_day", 2000, 6],
+        ["tt_nyali_weekend", 3500, 3],
+      ],
+      base: 0.7,
+      trend: 1.8,
+    },
+  ];
+
+  const FEE_BPS = 600; // 6%, matching the hand-written demo orders.
+  const WINDOW_DAYS = 60; // two full periods, so 30-day deltas compare real data
+  let sequence = 0;
+
+  for (let daysAgo = WINDOW_DAYS - 1; daysAgo >= 0; daysAgo -= 1) {
+    const date = new Date();
+    date.setDate(date.getDate() - daysAgo);
+    const weekend = date.getDay() === 5 || date.getDay() === 6 ? 1.4 : 1;
+    const progress = (WINDOW_DAYS - 1 - daysAgo) / (WINDOW_DAYS - 1);
+
+    for (const line of LINES) {
+      const expected = line.base * (1 + (line.trend - 1) * progress) * weekend;
+      const orderCount = Math.floor(expected) + (rand() < expected % 1 ? 1 : 0);
+
+      for (let index = 0; index < orderCount; index += 1) {
+        sequence += 1;
+        const weightTotal = line.types.reduce((sum, [, , weight]) => sum + weight, 0);
+        let roll = rand() * weightTotal;
+        let chosen = line.types[0]!;
+        for (const type of line.types) {
+          roll -= type[2];
+          if (roll <= 0) {
+            chosen = type;
+            break;
+          }
+        }
+        const [ticketTypeId, unitPrice] = chosen;
+        const quantity = rand() < 0.45 ? 1 : rand() < 0.75 ? 2 : rand() < 0.9 ? 3 : 4;
+        const subtotal = unitPrice * quantity;
+        const fees = Math.round((subtotal * FEE_BPS) / 10000);
+        const buyer = pick(KENYAN_NAMES);
+        const hour = 8 + Math.floor(rand() * 14);
+        const createdAt = at(-daysAgo, hour, Math.floor(rand() * 60));
+        // ~2% refunded, so the orders page and refund rate have texture.
+        const refunded = rand() < 0.02;
+
+        const order: Order = {
+          id: `ord_hist_${sequence}`,
+          reference: `BK-ORD${String(10000 + sequence)}`,
+          userId: null,
+          buyerEmail: `${buyer.split(" ")[0]!.toLowerCase()}.${sequence}@example.co.ke`,
+          buyerPhone: `+2547${String(40000000 + sequence * 131).slice(0, 8)}`,
+          eventId: line.eventId,
+          items: [
+            {
+              id: `oi_hist_${sequence}`,
+              ticketTypeId,
+              quantity,
+              unitPrice: kes(unitPrice),
+              lineTotal: kes(subtotal),
+            },
+          ],
+          subtotal: kes(subtotal),
+          fees: kes(fees),
+          total: kes(subtotal + fees),
+          status: refunded ? OrderStatus.REFUNDED : OrderStatus.FULFILLED,
+          holdId: null,
+          idempotencyKey: null,
+          createdAt,
+          paidAt: createdAt,
+        };
+        db.orders.set(order.id, order);
+      }
+    }
+  }
 }
 
 function seedContributions(db: MemoryDb): void {

@@ -274,6 +274,200 @@ export class CatalogService {
     return this.summariseMany(items);
   }
 
+  /**
+   * The USIKU overview: tonight's show (if any), per-event health, and the
+   * two headline series compared week-over-week. Complements
+   * `organizerDashboard`, which stays as the all-time totals feed.
+   */
+  async organizerOverview(organizerId: string): Promise<OrganizerOverview> {
+    const repos = this.uow.repos;
+    const { items: events } = await repos.events.query({
+      organizerId,
+      includeNonPublic: true,
+      limit: 200,
+    });
+
+    const now = new Date();
+    const nowIso = now.toISOString();
+    const dayMs = 24 * 60 * 60 * 1000;
+    const weekAgo = new Date(now.getTime() - 7 * dayMs).toISOString();
+    const twoWeeksAgo = new Date(now.getTime() - 14 * dayMs).toISOString();
+    const endOfToday = new Date(now.getTime());
+    endOfToday.setHours(23, 59, 59, 999);
+
+    let revenue7d = 0;
+    let revenuePrev7d = 0;
+    let tickets7d = 0;
+    let ticketsPrev7d = 0;
+    /** Gross revenue per day, oldest first — the KPI sparkline. */
+    const revenueByDay = new Array<number>(7).fill(0);
+
+    const health: EventHealth[] = [];
+
+    for (const event of events) {
+      if (event.status === "CANCELLED") continue;
+
+      let sold7dForEvent = 0;
+      let soldPrev7dForEvent = 0;
+      for (const order of await repos.orders.listByEvent(event.id)) {
+        if (order.status !== "FULFILLED" && order.status !== "PAID") continue;
+        const units = order.items.reduce((sum, item) => sum + item.quantity, 0);
+        if (order.createdAt >= weekAgo) {
+          revenue7d += order.total.amount;
+          tickets7d += units;
+          sold7dForEvent += units;
+          const dayIndex = Math.min(
+            6,
+            Math.floor((now.getTime() - new Date(order.createdAt).getTime()) / dayMs),
+          );
+          revenueByDay[6 - dayIndex]! += order.total.amount;
+        } else if (order.createdAt >= twoWeeksAgo) {
+          revenuePrev7d += order.total.amount;
+          ticketsPrev7d += units;
+          soldPrev7dForEvent += units;
+        }
+      }
+
+      if (event.endsAt < nowIso) continue;
+
+      const ticketTypes = await repos.ticketTypes.listByEvent(event.id);
+      let sold = 0;
+      let capacity: number | null = null;
+      if (ticketTypes.length > 0) {
+        capacity = 0;
+        for (const type of ticketTypes) {
+          const available = await repos.inventory.countAvailable(type.id);
+          capacity += type.quantity;
+          sold += type.quantity - available;
+        }
+      } else if (event.capacity !== null) {
+        capacity = event.capacity;
+        sold = await repos.bookings.countConfirmedGuests(event.id, null);
+      }
+
+      const scanned = (await repos.checkins.listByEvent(event.id)).filter(
+        (checkIn) => checkIn.result === "ADMITTED",
+      ).length;
+
+      health.push({
+        event,
+        venue: (await repos.venues.findById(event.venueId))!,
+        sold,
+        capacity,
+        sold7d: sold7dForEvent,
+        soldPrev7d: soldPrev7dForEvent,
+        scanned,
+        live: event.startsAt <= nowIso && event.endsAt >= nowIso,
+        startsToday: event.startsAt >= nowIso && event.startsAt <= endOfToday.toISOString(),
+      });
+    }
+
+    health.sort((a, b) => a.event.startsAt.localeCompare(b.event.startsAt));
+    const tonight = health.find((entry) => entry.live) ?? health.find((entry) => entry.startsToday) ?? null;
+
+    return {
+      tonight,
+      health: health.filter((entry) => entry !== tonight),
+      revenue7d: money(revenue7d, "KES"),
+      revenuePrev7d: money(revenuePrev7d, "KES"),
+      tickets7d,
+      ticketsPrev7d,
+      revenueByDay,
+    };
+  }
+
+  /**
+   * Thirty days of sales, shaped for charts: a daily series, a same-length
+   * comparison window, and revenue broken down by event, category and city.
+   * Everything derives from orders so the charts, the ledger and the money
+   * panels can never disagree.
+   */
+  async organizerAnalytics(organizerId: string): Promise<OrganizerAnalytics> {
+    const repos = this.uow.repos;
+    const { items: events } = await repos.events.query({
+      organizerId,
+      includeNonPublic: true,
+      limit: 200,
+    });
+
+    const now = new Date();
+    const dayMs = 24 * 60 * 60 * 1000;
+    const windowStart = new Date(now.getTime() - 30 * dayMs).toISOString();
+    const prevStart = new Date(now.getTime() - 60 * dayMs).toISOString();
+
+    const series: DailyPoint[] = Array.from({ length: 30 }, (_, index) => {
+      const date = new Date(now.getTime() - (29 - index) * dayMs);
+      return { date: date.toISOString().slice(0, 10), revenue: 0, tickets: 0 };
+    });
+
+    let revenue30d = 0;
+    let revenuePrev30d = 0;
+    let tickets30d = 0;
+    let ticketsPrev30d = 0;
+    let orders30d = 0;
+    let refunded30d = 0;
+
+    const byEvent = new Map<string, { title: string; revenue: number; tickets: number }>();
+    const byCategory = new Map<string, number>();
+    const byCity = new Map<string, number>();
+
+    for (const event of events) {
+      const venue = await repos.venues.findById(event.venueId);
+      for (const order of await repos.orders.listByEvent(event.id)) {
+        const isSale = order.status === "FULFILLED" || order.status === "PAID";
+        const inWindow = order.createdAt >= windowStart;
+        if (order.status === "REFUNDED" && inWindow) {
+          orders30d += 1;
+          refunded30d += 1;
+          continue;
+        }
+        if (!isSale) continue;
+
+        const units = order.items.reduce((sum, item) => sum + item.quantity, 0);
+        if (inWindow) {
+          orders30d += 1;
+          revenue30d += order.total.amount;
+          tickets30d += units;
+
+          const dayIndex =
+            29 - Math.min(29, Math.floor((now.getTime() - new Date(order.createdAt).getTime()) / dayMs));
+          const point = series[dayIndex];
+          if (point) {
+            point.revenue += order.total.amount;
+            point.tickets += units;
+          }
+
+          const entry = byEvent.get(event.id) ?? { title: event.title, revenue: 0, tickets: 0 };
+          entry.revenue += order.total.amount;
+          entry.tickets += units;
+          byEvent.set(event.id, entry);
+          byCategory.set(event.category, (byCategory.get(event.category) ?? 0) + order.total.amount);
+          if (venue) byCity.set(venue.city, (byCity.get(venue.city) ?? 0) + order.total.amount);
+        } else if (order.createdAt >= prevStart) {
+          revenuePrev30d += order.total.amount;
+          ticketsPrev30d += units;
+        }
+      }
+    }
+
+    return {
+      series,
+      revenue30d: money(revenue30d, "KES"),
+      revenuePrev30d: money(revenuePrev30d, "KES"),
+      tickets30d,
+      ticketsPrev30d,
+      orders30d,
+      refunded30d,
+      byEvent: [...byEvent.values()].sort((a, b) => b.revenue - a.revenue),
+      byCategory: [...byCategory.entries()]
+        .map(([category, revenue]) => ({ category, revenue }))
+        .sort((a, b) => b.revenue - a.revenue),
+      byCity: [...byCity.entries()]
+        .map(([city, revenue]) => ({ city, revenue }))
+        .sort((a, b) => b.revenue - a.revenue),
+    };
+  }
+
   async organizerDashboard(organizerId: string): Promise<OrganizerDashboard> {
     const repos = this.uow.repos;
     const { items: events } = await repos.events.query({
@@ -400,6 +594,56 @@ export class CatalogService {
     if (!organizer) throw notFound("Organizer", organizerId);
     return organizer;
   }
+}
+
+/** One row in the overview's event-health list. */
+export interface EventHealth {
+  event: Event;
+  venue: Venue;
+  /** Units sold (ticketed) or guests confirmed (capacity events). */
+  sold: number;
+  capacity: number | null;
+  /** Units sold in the last 7 days / the 7 days before that. */
+  sold7d: number;
+  soldPrev7d: number;
+  /** Admitted gate scans. */
+  scanned: number;
+  live: boolean;
+  startsToday: boolean;
+}
+
+export interface OrganizerOverview {
+  /** The show whose gate matters right now — live, else starting today. */
+  tonight: EventHealth | null;
+  /** Remaining upcoming events, soonest first. */
+  health: EventHealth[];
+  revenue7d: Money;
+  revenuePrev7d: Money;
+  tickets7d: number;
+  ticketsPrev7d: number;
+  /** Gross revenue per day, oldest first. */
+  revenueByDay: number[];
+}
+
+export interface DailyPoint {
+  /** ISO date (YYYY-MM-DD). */
+  date: string;
+  revenue: number;
+  tickets: number;
+}
+
+export interface OrganizerAnalytics {
+  /** Last 30 days, oldest first. */
+  series: DailyPoint[];
+  revenue30d: Money;
+  revenuePrev30d: Money;
+  tickets30d: number;
+  ticketsPrev30d: number;
+  orders30d: number;
+  refunded30d: number;
+  byEvent: Array<{ title: string; revenue: number; tickets: number }>;
+  byCategory: Array<{ category: string; revenue: number }>;
+  byCity: Array<{ city: string; revenue: number }>;
 }
 
 export interface OrganizerDashboard {
