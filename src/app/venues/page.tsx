@@ -1,0 +1,146 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { MapPin, Users } from "lucide-react";
+import { getContainer } from "@/server/container";
+import { Badge } from "@/components/ui/badge";
+import { BookitIcon } from "@/components/ui/bookit-icon";
+import { Card, CardContent } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/states";
+import { CITIES } from "@/lib/cities";
+import { pluralise } from "@/lib/format";
+
+export const metadata: Metadata = {
+  title: "Venues",
+  description:
+    "Stadiums, gardens, ballrooms and meeting rooms hosting events across Kenya on Bookit.",
+};
+
+export default async function VenuesPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  const cityFilter = typeof params.city === "string" ? params.city : undefined;
+
+  const container = getContainer();
+  const venues = await container.uow.repos.venues.list();
+  const events = await container.uow.repos.events.listAll();
+  const now = new Date().toISOString();
+
+  const rows = venues
+    .filter((venue) => !cityFilter || venue.city === cityFilter)
+    .map((venue) => ({
+      venue,
+      upcoming: events.filter(
+        (event) =>
+          event.venueId === venue.id && event.startsAt >= now && event.status !== "CANCELLED",
+      ).length,
+    }))
+    .sort((a, b) => b.upcoming - a.upcoming || a.venue.name.localeCompare(b.venue.name));
+
+  return (
+    <div className="page-shell py-8 lg:py-12">
+      <header className="mb-8">
+        <h1 className="text-2xl font-bold text-ink lg:text-3xl">Venues</h1>
+        <p className="mt-2 max-w-2xl text-sm text-ink-secondary">
+          From 60,000-seat stadiums to a 40-seat boardroom in Westlands — every venue currently
+          hosting events on Bookit.
+        </p>
+      </header>
+
+      <nav aria-label="Filter by city" className="mb-8">
+        <ul className="scroll-rail sm:flex sm:flex-wrap sm:gap-2 sm:overflow-visible">
+          <li>
+            <Link
+              href="/venues"
+              aria-current={!cityFilter ? "page" : undefined}
+              className={`inline-flex whitespace-nowrap rounded-pill border px-4 py-2 text-sm font-medium transition-colors ${
+                !cityFilter
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-line bg-surface text-ink-secondary hover:border-primary/40 hover:text-primary"
+              }`}
+            >
+              All cities
+            </Link>
+          </li>
+          {CITIES.map((city) => (
+            <li key={city}>
+              <Link
+                href={`/venues?city=${encodeURIComponent(city)}`}
+                aria-current={cityFilter === city ? "page" : undefined}
+                className={`inline-flex whitespace-nowrap rounded-pill border px-4 py-2 text-sm font-medium transition-colors ${
+                  cityFilter === city
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-line bg-surface text-ink-secondary hover:border-primary/40 hover:text-primary"
+                }`}
+              >
+                {city}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </nav>
+
+      {rows.length === 0 ? (
+        <EmptyState
+          icon={<BookitIcon name="venue" className="size-5" />}
+          title="No venues in that city yet"
+          description="We are adding venues across Kenya. Try another city."
+          action={{ label: "See all venues", href: "/venues" }}
+        />
+      ) : (
+        <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {rows.map(({ venue, upcoming }) => (
+            <li key={venue.id}>
+              <Card className="h-full transition-colors hover:border-primary/40">
+                <CardContent className="p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <h2 className="text-base font-semibold text-ink">
+                      <Link
+                        href={`/events?city=${encodeURIComponent(venue.city)}`}
+                        className="hover:text-primary"
+                      >
+                        {venue.name}
+                      </Link>
+                    </h2>
+                    {upcoming > 0 ? (
+                      <Badge tone="brand">{pluralise(upcoming, "event")}</Badge>
+                    ) : (
+                      <Badge>No events</Badge>
+                    )}
+                  </div>
+
+                  <dl className="mt-3 flex flex-col gap-1.5 text-sm text-ink-secondary">
+                    <div className="flex items-start gap-2">
+                      <MapPin className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden="true" />
+                      <dt className="sr-only">Address</dt>
+                      <dd>{venue.addressLine}</dd>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Users className="size-4 shrink-0 text-muted" aria-hidden="true" />
+                      <dt className="sr-only">Capacity</dt>
+                      <dd className="tabular">
+                        Capacity {venue.capacity.toLocaleString("en-KE")}
+                      </dd>
+                    </div>
+                  </dl>
+
+                  {venue.sections.length > 0 ? (
+                    <ul className="mt-3 flex flex-wrap gap-1.5">
+                      {venue.sections.map((section) => (
+                        <li key={section.id}>
+                          <Badge>{section.name}</Badge>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </CardContent>
+              </Card>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}

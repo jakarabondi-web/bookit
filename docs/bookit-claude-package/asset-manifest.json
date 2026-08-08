@@ -1,0 +1,40 @@
+{
+  "brand": "Bookit",
+  "reference_direction": "1B warm orange",
+  "images": [
+    "booking-calendar.png",
+    "booking-confirmed.png",
+    "booking-meeting.png",
+    "booking-mobile.png",
+    "city-nairobi.jpg",
+    "event-basketball.jpg",
+    "event-conference.jpg",
+    "event-dinner.jpg",
+    "event-football.jpg",
+    "event-wedding.jpg",
+    "hero-banquet.jpg",
+    "hero-concert.jpg"
+  ],
+  "icons": [
+    "bell.svg",
+    "booking.svg",
+    "comedy.svg",
+    "community.svg",
+    "concerts.svg",
+    "conference.svg",
+    "filter.svg",
+    "gift.svg",
+    "heart.svg",
+    "meeting.svg",
+    "party.svg",
+    "qr.svg",
+    "rsvp.svg",
+    "search.svg",
+    "seat.svg",
+    "sports.svg",
+    "ticket.svg",
+    "user.svg",
+    "venue.svg",
+    "wedding.svg"
+  ]
+}

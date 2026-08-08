@@ -1,0 +1,1299 @@
+// Bookit — production PostgreSQL schema.
+//
+// The application runs against the repository interfaces in
+// `src/server/repositories`. This schema is the production (Prisma) backing for
+// those interfaces; with DATABASE_URL unset the in-memory implementation is
+// used instead, so local development and the domain test-suite need no database.
+//
+// Money is stored as BigInt minor units plus a currency code — never a float.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/* -------------------------------------------------------------------------- */
+/* Enums                                                                       */
+/* -------------------------------------------------------------------------- */
+
+enum EventType {
+  PAID_TICKET
+  FREE_RSVP
+  PRIVATE_INVITATION
+  BOOKING
+  BANQUET
+  RECURRING_MEETING
+  HYBRID
+}
+
+enum EventStatus {
+  DRAFT
+  SCHEDULED
+  ON_SALE
+  SOLD_OUT
+  LIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum EventVisibility {
+  PUBLIC
+  UNLISTED
+  PRIVATE
+  INVITE_CODE_REQUIRED
+  INVITE_LINK_REQUIRED
+}
+
+enum EventCategory {
+  CONCERTS
+  SPORTS
+  COMEDY
+  CONFERENCES
+  PARTIES
+  WEDDINGS
+  MEETINGS
+  COMMUNITY
+}
+
+enum InventoryState {
+  AVAILABLE
+  HELD
+  SOLD
+  CANCELLED
+}
+
+enum TicketStatus {
+  ACTIVE
+  LISTED
+  TRANSFERRED
+  SOLD
+  CHECKED_IN
+  CONSUMED
+  REFUNDED
+  VOIDED
+  CANCELLED
+  SUSPENDED
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  WAITLISTED
+  DECLINED
+  CANCELLED
+  CHECKED_IN
+  NO_SHOW
+}
+
+enum OrderStatus {
+  CREATED
+  AWAITING_PAYMENT
+  PAID
+  FULFILLED
+  EXPIRED
+  CANCELLED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum PaymentStatus {
+  CREATED
+  PENDING
+  AUTHORIZED
+  CAPTURED
+  SETTLED
+  FAILED
+  CANCELLED
+  REFUNDED
+  DISPUTED
+  CHARGEBACK
+}
+
+enum PaymentMethod {
+  MPESA
+  CARD
+  AIRTEL_MONEY
+  WALLET
+  BANK_TRANSFER
+  FREE
+}
+
+enum PayoutStatus {
+  PENDING
+  UNDER_REVIEW
+  APPROVED
+  PROCESSING
+  PAID
+  FAILED
+  REVERSED
+}
+
+enum ResaleListingStatus {
+  DRAFT
+  ACTIVE
+  RESERVED
+  SOLD
+  CANCELLED
+  EXPIRED
+  BLOCKED
+}
+
+enum TransferStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  CANCELLED
+  EXPIRED
+}
+
+enum InviteStatus {
+  ISSUED
+  VIEWED
+  ACCEPTED
+  DECLINED
+  REVOKED
+  EXPIRED
+}
+
+enum RiskOutcome {
+  ALLOW
+  MONITOR
+  CHALLENGE
+  HOLD
+  MANUAL_REVIEW
+  BLOCK
+}
+
+enum Role {
+  CONSUMER
+  ORGANIZER_OWNER
+  ORGANIZER_ADMIN
+  EVENT_MANAGER
+  FINANCE
+  FINANCE_MANAGER
+  CHECK_IN_STAFF
+  SUPPORT_AGENT
+  RISK_ANALYST
+  SUPER_ADMIN
+  SECURITY_ADMIN
+}
+
+enum OrganizerType {
+  INDIVIDUAL
+  BUSINESS
+  NONPROFIT
+  COMMUNITY_ORGANIZATION
+  CHURCH
+  ASSOCIATION
+  SPORTS_ORGANIZATION
+}
+
+enum VerificationStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+  REJECTED
+  SUSPENDED
+}
+
+enum CheckInResult {
+  ADMITTED
+  ALREADY_USED
+  INVALID_CREDENTIAL
+  WRONG_EVENT
+  NOT_YET_VALID
+  REVOKED
+  REQUIRES_OVERRIDE
+}
+
+enum ContributionStatus {
+  PLEDGED
+  PARTIALLY_PAID
+  PAID
+  WRITTEN_OFF
+}
+
+enum LedgerAccountType {
+  ASSET
+  LIABILITY
+  REVENUE
+  EXPENSE
+  EQUITY
+}
+
+enum LedgerSide {
+  DEBIT
+  CREDIT
+}
+
+enum TrustTier {
+  NEW
+  ESTABLISHED
+  TRUSTED
+}
+
+/* -------------------------------------------------------------------------- */
+/* Auth & accounts                                                             */
+/* -------------------------------------------------------------------------- */
+
+model User {
+  id              String    @id @default(cuid())
+  email           String    @unique
+  emailVerifiedAt DateTime?
+  phone           String?   @unique
+  phoneVerifiedAt DateTime?
+  passwordHash    String?
+  fullName        String
+  mfaEnabled      Boolean   @default(false)
+  mfaSecret       String?
+  disabledAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  profile             Profile?
+  sessions            Session[]
+  roles               UserRole[]
+  organizerMembers    OrganizerMember[]
+  orders              Order[]
+  ticketsOwned        Ticket[]           @relation("TicketOwner")
+  bookings            Booking[]
+  listings            ResaleListing[]    @relation("ListingSeller")
+  purchases           ResaleListing[]    @relation("ListingBuyer")
+  auditLogs           AuditLog[]
+  notifications       Notification[]
+  notificationPrefs   NotificationPreference?
+  riskScores          RiskScore[]
+  transfersInitiated  TicketTransfer[]   @relation("TransferSender")
+  transfersReceived   TicketTransfer[]   @relation("TransferRecipient")
+
+  @@index([createdAt])
+}
+
+model Profile {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  avatarUrl String?
+  city      String?
+  bio       String?
+  locale    String   @default("en-KE")
+  updatedAt DateTime @updatedAt
+}
+
+model Session {
+  id             String    @id @default(cuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash      String    @unique
+  deviceLabel    String?
+  deviceId       String?
+  ip             String?
+  userAgent      String?
+  mfaSatisfiedAt DateTime?
+  createdAt      DateTime  @default(now())
+  lastSeenAt     DateTime  @default(now())
+  expiresAt      DateTime
+  revokedAt      DateTime?
+
+  @@index([userId, revokedAt])
+}
+
+model Permission {
+  id          String           @id @default(cuid())
+  key         String           @unique
+  description String
+  roles       RolePermission[]
+}
+
+model RolePermission {
+  role         Role
+  permissionId String
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([role, permissionId])
+}
+
+model UserRole {
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role
+
+  @@id([userId, role])
+}
+
+/* -------------------------------------------------------------------------- */
+/* Organizers, teams, RBAC                                                     */
+/* -------------------------------------------------------------------------- */
+
+model Organizer {
+  id           String             @id @default(cuid())
+  name         String
+  slug         String             @unique
+  type         OrganizerType
+  about        String             @default("")
+  logoUrl      String?
+  verification VerificationStatus @default(UNVERIFIED)
+  trustTier    TrustTier          @default(NEW)
+  supportEmail String
+  supportPhone String
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  members       OrganizerMember[]
+  verifications OrganizerVerification[]
+  events        Event[]
+  payouts       Payout[]
+  settlements   Settlement[]
+  ledgerAccts   LedgerAccount[]
+}
+
+model OrganizerMember {
+  organizerId String
+  organizer   Organizer @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role        Role
+  addedAt     DateTime  @default(now())
+
+  @@id([organizerId, userId])
+  @@index([userId])
+}
+
+model OrganizerVerification {
+  id           String             @id @default(cuid())
+  organizerId  String
+  organizer    Organizer          @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+  status       VerificationStatus @default(PENDING)
+  legalName    String
+  kraPin       String?
+  idNumberEnc  String?
+  regNumber    String?
+  // Beneficial owners and document references. Access is audited; see
+  // docs/SECURITY.md — KYC payloads are encrypted at rest.
+  documents    Json               @default("[]")
+  owners       Json               @default("[]")
+  reviewNotes  String?
+  reviewedById String?
+  submittedAt  DateTime           @default(now())
+  reviewedAt   DateTime?
+
+  @@index([organizerId, status])
+}
+
+/* -------------------------------------------------------------------------- */
+/* Venues                                                                      */
+/* -------------------------------------------------------------------------- */
+
+model Venue {
+  id          String  @id @default(cuid())
+  name        String
+  city        String
+  area        String
+  addressLine String
+  capacity    Int
+  latitude    Float?
+  longitude   Float?
+
+  sections VenueSection[]
+  events   Event[]
+
+  @@index([city])
+}
+
+model VenueSection {
+  id       String @id @default(cuid())
+  venueId  String
+  venue    Venue  @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  name     String
+  capacity Int
+
+  rows        VenueRow[]
+  ticketTypes TicketType[]
+}
+
+model VenueRow {
+  id        String       @id @default(cuid())
+  sectionId String
+  section   VenueSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  label     String
+
+  seats VenueSeat[]
+}
+
+model VenueSeat {
+  id    String   @id @default(cuid())
+  rowId String
+  row   VenueRow @relation(fields: [rowId], references: [id], onDelete: Cascade)
+  label String
+
+  @@unique([rowId, label])
+}
+
+/* -------------------------------------------------------------------------- */
+/* Events                                                                      */
+/* -------------------------------------------------------------------------- */
+
+model Event {
+  id          String          @id @default(cuid())
+  slug        String          @unique
+  title       String
+  subtitle    String?
+  description String
+  type        EventType
+  status      EventStatus     @default(DRAFT)
+  visibility  EventVisibility @default(PUBLIC)
+  category    EventCategory
+  tags        String[]        @default([])
+  organizerId String
+  organizer   Organizer       @relation(fields: [organizerId], references: [id])
+  venueId     String
+  venue       Venue           @relation(fields: [venueId], references: [id])
+  startsAt    DateTime
+  endsAt      DateTime
+  heroImage   String
+  cardImage   String
+  capacity    Int?
+  featured    Boolean         @default(false)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  policy        EventPolicy?
+  agenda        AgendaItem[]
+  ticketTypes   TicketType[]
+  inventory     InventoryUnit[]
+  tickets       Ticket[]
+  orders        Order[]
+  bookings      Booking[]
+  invites       PrivateInvite[]
+  tables        BanquetTable[]
+  recurrence    RecurringEvent?
+  occurrences   EventOccurrence[]
+  listings      ResaleListing[]
+  checkins      CheckIn[]
+  contributions Contribution[]
+  promoCodes    PromoCode[]
+  scanners      ScannerDevice[]
+
+  @@index([status, startsAt])
+  @@index([category, startsAt])
+  @@index([organizerId])
+}
+
+model EventPolicy {
+  eventId               String   @id
+  event                 Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  refundPolicy          String
+  transferAllowed       Boolean  @default(true)
+  resaleEnabled         Boolean  @default(false)
+  resaleMaxMarkupBps    Int      @default(0)
+  resaleOpensAt         DateTime?
+  resaleClosesAt        DateTime?
+  maxListingsPerAccount Int      @default(2)
+  sellerPayoutDelayHrs  Int      @default(48)
+  maxTicketsPerAccount  Int      @default(6)
+  ageRestriction        String?
+  entryRules            String[] @default([])
+}
+
+model AgendaItem {
+  id          String   @id @default(cuid())
+  eventId     String
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  startsAt    DateTime
+  title       String
+  description String?
+  sortOrder   Int      @default(0)
+}
+
+model RecurringEvent {
+  eventId    String    @id
+  event      Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  rrule      String
+  humanLabel String
+  until      DateTime?
+}
+
+model EventOccurrence {
+  id        String    @id @default(cuid())
+  eventId   String
+  event     Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  startsAt  DateTime
+  endsAt    DateTime
+  notes     String?
+  cancelled Boolean   @default(false)
+
+  bookings Booking[]
+  checkins CheckIn[]
+
+  @@unique([eventId, startsAt])
+  @@index([startsAt])
+}
+
+/* -------------------------------------------------------------------------- */
+/* Inventory & tickets                                                         */
+/* -------------------------------------------------------------------------- */
+
+model TicketType {
+  id           String        @id @default(cuid())
+  eventId      String
+  event        Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  name         String
+  description  String?
+  priceAmount  BigInt
+  currency     String        @default("KES")
+  quantity     Int
+  minPerOrder  Int           @default(1)
+  maxPerOrder  Int           @default(6)
+  salesStartAt DateTime
+  salesEndAt   DateTime
+  sectionId    String?
+  section      VenueSection? @relation(fields: [sectionId], references: [id])
+  sortOrder    Int           @default(0)
+
+  inventory  InventoryUnit[]
+  orderItems OrderItem[]
+  tickets    Ticket[]
+
+  @@index([eventId])
+}
+
+/// One row per sellable unit. Overselling is prevented by locking the rows
+/// selected for a hold inside the reservation transaction
+/// (`SELECT ... FOR UPDATE SKIP LOCKED`).
+model InventoryUnit {
+  id           String         @id @default(cuid())
+  eventId      String
+  event        Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  ticketTypeId String
+  ticketType   TicketType     @relation(fields: [ticketTypeId], references: [id], onDelete: Cascade)
+  state        InventoryState @default(AVAILABLE)
+  holdId       String?
+  hold         TicketHold?    @relation(fields: [holdId], references: [id])
+  ticketId     String?        @unique
+  ticket       Ticket?        @relation(fields: [ticketId], references: [id])
+  seatLabel    String?
+  version      Int            @default(0)
+
+  @@index([ticketTypeId, state])
+  @@index([holdId])
+}
+
+model TicketHold {
+  id         String    @id @default(cuid())
+  orderId    String    @unique
+  order      Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  eventId    String
+  expiresAt  DateTime
+  releasedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  units InventoryUnit[]
+
+  @@index([expiresAt, releasedAt])
+}
+
+model Ticket {
+  id                String       @id @default(cuid())
+  code              String       @unique
+  eventId           String
+  event             Event        @relation(fields: [eventId], references: [id])
+  ticketTypeId      String
+  ticketType        TicketType   @relation(fields: [ticketTypeId], references: [id])
+  orderId           String
+  order             Order        @relation(fields: [orderId], references: [id])
+  ownerUserId       String
+  owner             User         @relation("TicketOwner", fields: [ownerUserId], references: [id])
+  ownerName         String
+  seatLabel         String?
+  status            TicketStatus @default(ACTIVE)
+  faceAmount        BigInt
+  currency          String       @default("KES")
+  /// Bumped on every ownership/status change so previously issued QR
+  /// credentials stop verifying immediately.
+  credentialVersion Int          @default(1)
+  issuedAt          DateTime     @default(now())
+  checkedInAt       DateTime?
+  updatedAt         DateTime     @updatedAt
+
+  ownershipHistory TicketOwnershipHistory[]
+  credentials      TicketCredential[]
+  transfers        TicketTransfer[]
+  listings         ResaleListing[]
+  checkins         CheckIn[]
+  inventoryUnit    InventoryUnit?
+
+  @@index([ownerUserId, status])
+  @@index([eventId, status])
+}
+
+model TicketOwnershipHistory {
+  id         String   @id @default(cuid())
+  ticketId   String
+  ticket     Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  fromUserId String?
+  toUserId   String
+  reason     String
+  reference  String?
+  at         DateTime @default(now())
+
+  @@index([ticketId, at])
+}
+
+/// Issued short-lived signed credential. Only the signature digest is stored so
+/// a database leak does not yield working QR codes.
+model TicketCredential {
+  id            String   @id @default(cuid())
+  ticketId      String
+  ticket        Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  version       Int
+  keyId         String
+  nonce         String
+  signatureHash String
+  issuedAt      DateTime @default(now())
+  expiresAt     DateTime
+  consumedAt    DateTime?
+
+  @@index([ticketId, version])
+  @@index([expiresAt])
+}
+
+model TicketTransfer {
+  id          String         @id @default(cuid())
+  ticketId    String
+  ticket      Ticket         @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  fromUserId  String
+  fromUser    User           @relation("TransferSender", fields: [fromUserId], references: [id])
+  toEmail     String
+  toUserId    String?
+  toUser      User?          @relation("TransferRecipient", fields: [toUserId], references: [id])
+  status      TransferStatus @default(PENDING)
+  createdAt   DateTime       @default(now())
+  expiresAt   DateTime
+  resolvedAt  DateTime?
+
+  @@index([ticketId, status])
+}
+
+/* -------------------------------------------------------------------------- */
+/* Orders                                                                      */
+/* -------------------------------------------------------------------------- */
+
+model Order {
+  id             String      @id @default(cuid())
+  reference      String      @unique
+  userId         String?
+  user           User?       @relation(fields: [userId], references: [id])
+  buyerEmail     String
+  buyerPhone     String?
+  eventId        String
+  event          Event       @relation(fields: [eventId], references: [id])
+  subtotalAmount BigInt
+  feesAmount     BigInt
+  totalAmount    BigInt
+  currency       String      @default("KES")
+  status         OrderStatus @default(CREATED)
+  /// Client-supplied key making checkout retries safe.
+  idempotencyKey String?     @unique
+  createdAt      DateTime    @default(now())
+  paidAt         DateTime?
+  updatedAt      DateTime    @updatedAt
+
+  items    OrderItem[]
+  hold     TicketHold?
+  tickets  Ticket[]
+  payments Payment[]
+  refunds  Refund[]
+
+  @@index([userId, createdAt])
+  @@index([eventId, status])
+}
+
+model OrderItem {
+  id           String     @id @default(cuid())
+  orderId      String
+  order        Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  ticketTypeId String
+  ticketType   TicketType @relation(fields: [ticketTypeId], references: [id])
+  quantity     Int
+  unitAmount   BigInt
+  lineAmount   BigInt
+  currency     String     @default("KES")
+}
+
+/* -------------------------------------------------------------------------- */
+/* Bookings, RSVP, invitations, tables                                         */
+/* -------------------------------------------------------------------------- */
+
+model Booking {
+  id                  String           @id @default(cuid())
+  reference           String           @unique
+  eventId             String
+  event               Event            @relation(fields: [eventId], references: [id])
+  occurrenceId        String?
+  occurrence          EventOccurrence? @relation(fields: [occurrenceId], references: [id])
+  primaryGuestUserId  String?
+  primaryGuestUser    User?            @relation(fields: [primaryGuestUserId], references: [id])
+  primaryGuestName    String
+  phone               String?
+  email               String?
+  status              BookingStatus    @default(PENDING)
+  guestCount          Int              @default(1)
+  tableId             String?
+  table               BanquetTable?    @relation(fields: [tableId], references: [id])
+  mealChoice          String?
+  contributionPledged BigInt?
+  contributionPaid    BigInt?
+  currency            String           @default("KES")
+  paymentStatus       PaymentStatus?
+  invitedBy           String?
+  notes               String?
+  checkedInAt         DateTime?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  guests        BookingGuest[]
+  answers       BookingAnswer[]
+  payments      Payment[]
+  invite        PrivateInvite?
+  contributions Contribution[]
+  checkins      CheckIn[]
+
+  @@index([eventId, status])
+  @@index([primaryGuestUserId])
+  @@index([email])
+}
+
+model BookingGuest {
+  id          String    @id @default(cuid())
+  bookingId   String
+  booking     Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  name        String
+  phone       String?
+  email       String?
+  mealChoice  String?
+  checkedInAt DateTime?
+}
+
+model BookingQuestion {
+  id        String  @id @default(cuid())
+  eventId   String
+  prompt    String
+  kind      String  @default("TEXT")
+  required  Boolean @default(false)
+  sortOrder Int     @default(0)
+
+  answers BookingAnswer[]
+}
+
+model BookingAnswer {
+  id         String          @id @default(cuid())
+  bookingId  String
+  booking    Booking         @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  questionId String
+  question   BookingQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  value      String
+
+  @@unique([bookingId, questionId])
+}
+
+/// A private invite. Only the token hash is persisted; the raw token is
+/// returned exactly once at issue time and never written to logs.
+model PrivateInvite {
+  id          String       @id @default(cuid())
+  eventId     String
+  event       Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  tokenHash   String       @unique
+  inviteeName String
+  phone       String?
+  email       String?
+  maxGuests   Int          @default(1)
+  expiresAt   DateTime
+  status      InviteStatus @default(ISSUED)
+  bookingId   String?      @unique
+  booking     Booking?     @relation(fields: [bookingId], references: [id])
+  createdAt   DateTime     @default(now())
+
+  @@index([eventId, status])
+}
+
+model BanquetTable {
+  id      String @id @default(cuid())
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  name    String
+  seats   Int
+
+  bookings    Booking[]
+  assignments TableAssignment[]
+
+  @@unique([eventId, name])
+}
+
+model TableAssignment {
+  id        String       @id @default(cuid())
+  tableId   String
+  table     BanquetTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  bookingId String
+  seatCount Int          @default(1)
+  at        DateTime     @default(now())
+
+  @@unique([tableId, bookingId])
+}
+
+/* -------------------------------------------------------------------------- */
+/* Resale marketplace                                                          */
+/* -------------------------------------------------------------------------- */
+
+model ResaleListing {
+  id           String              @id @default(cuid())
+  ticketId     String
+  ticket       Ticket              @relation(fields: [ticketId], references: [id])
+  eventId      String
+  event        Event               @relation(fields: [eventId], references: [id])
+  sellerUserId String
+  seller       User                @relation("ListingSeller", fields: [sellerUserId], references: [id])
+  askAmount    BigInt
+  faceAmount   BigInt
+  currency     String              @default("KES")
+  status       ResaleListingStatus @default(DRAFT)
+  buyerUserId  String?
+  buyer        User?               @relation("ListingBuyer", fields: [buyerUserId], references: [id])
+  createdAt    DateTime            @default(now())
+  soldAt       DateTime?
+
+  orders ResaleOrder[]
+
+  @@index([eventId, status])
+  @@index([sellerUserId, status])
+}
+
+model ResaleOrder {
+  id           String   @id @default(cuid())
+  listingId    String
+  listing      ResaleListing @relation(fields: [listingId], references: [id])
+  buyerUserId  String
+  totalAmount  BigInt
+  feeAmount    BigInt
+  sellerAmount BigInt
+  currency     String   @default("KES")
+  createdAt    DateTime @default(now())
+}
+
+/* -------------------------------------------------------------------------- */
+/* Payments, refunds, ledger, settlement                                       */
+/* -------------------------------------------------------------------------- */
+
+model Payment {
+  id                String        @id @default(cuid())
+  orderId           String?
+  order             Order?        @relation(fields: [orderId], references: [id])
+  bookingId         String?
+  booking           Booking?      @relation(fields: [bookingId], references: [id])
+  method            PaymentMethod
+  status            PaymentStatus @default(CREATED)
+  expectedAmount    BigInt
+  receivedAmount    BigInt?
+  currency          String        @default("KES")
+  providerRequestId String?       @unique
+  providerReference String?       @unique
+  providerTimestamp DateTime?
+  phone             String?
+  failureReason     String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  attempts PaymentAttempt[]
+  webhooks PaymentWebhook[]
+  refunds  Refund[]
+
+  @@index([status, createdAt])
+}
+
+model PaymentAttempt {
+  id          String        @id @default(cuid())
+  paymentId   String
+  payment     Payment       @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  status      PaymentStatus
+  providerRef String?
+  requestBody Json?
+  createdAt   DateTime      @default(now())
+}
+
+/// Every inbound provider callback, stored once. `dedupeKey` gives webhook
+/// handling idempotency and replay protection.
+model PaymentWebhook {
+  id          String    @id @default(cuid())
+  provider    String
+  dedupeKey   String    @unique
+  paymentId   String?
+  payment     Payment?  @relation(fields: [paymentId], references: [id])
+  /// Raw body with PII/credentials redacted before persistence.
+  payload     Json
+  signatureOk Boolean   @default(false)
+  quarantined Boolean   @default(false)
+  processedAt DateTime?
+  receivedAt  DateTime  @default(now())
+
+  @@index([provider, receivedAt])
+}
+
+model Refund {
+  id          String   @id @default(cuid())
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id])
+  paymentId   String
+  payment     Payment  @relation(fields: [paymentId], references: [id])
+  amount      BigInt
+  currency    String   @default("KES")
+  reason      String
+  status      String   @default("PENDING")
+  ticketIds   String[] @default([])
+  createdById String?
+  createdAt   DateTime @default(now())
+  settledAt   DateTime?
+}
+
+model LedgerAccount {
+  id               String            @id @default(cuid())
+  code             String            @unique
+  name             String
+  type             LedgerAccountType
+  ownerOrganizerId String?
+  organizer        Organizer?        @relation(fields: [ownerOrganizerId], references: [id])
+  currency         String            @default("KES")
+
+  entries LedgerEntry[]
+}
+
+/// Double-entry transaction. A DB constraint plus the service layer both
+/// enforce sum(debits) == sum(credits) before a transaction is marked posted.
+model LedgerTransaction {
+  id        String   @id @default(cuid())
+  reference String   @unique
+  kind      String
+  postedAt  DateTime @default(now())
+  metadata  Json     @default("{}")
+
+  entries LedgerEntry[]
+
+  @@index([kind, postedAt])
+}
+
+model LedgerEntry {
+  id            String            @id @default(cuid())
+  transactionId String
+  transaction   LedgerTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  accountId     String
+  account       LedgerAccount     @relation(fields: [accountId], references: [id])
+  side          LedgerSide
+  amount        BigInt
+  currency      String            @default("KES")
+  memo          String?
+
+  @@index([accountId, transactionId])
+}
+
+model Settlement {
+  id          String   @id @default(cuid())
+  organizerId String
+  organizer   Organizer @relation(fields: [organizerId], references: [id])
+  periodStart DateTime
+  periodEnd   DateTime
+  grossAmount BigInt
+  feeAmount   BigInt
+  netAmount   BigInt
+  currency    String   @default("KES")
+  computedAt  DateTime @default(now())
+
+  @@unique([organizerId, periodStart, periodEnd])
+}
+
+model Payout {
+  id                String       @id @default(cuid())
+  organizerId       String
+  organizer         Organizer    @relation(fields: [organizerId], references: [id])
+  amount            BigInt
+  currency          String       @default("KES")
+  status            PayoutStatus @default(PENDING)
+  destinationMasked String
+  holdReason        String?
+  requestedAt       DateTime     @default(now())
+  approvedByUserId  String?
+  paidAt            DateTime?
+
+  @@index([organizerId, status])
+}
+
+model PayoutReserve {
+  id          String   @id @default(cuid())
+  organizerId String
+  eventId     String?
+  amount      BigInt
+  currency    String   @default("KES")
+  reason      String
+  releaseAt   DateTime
+  releasedAt  DateTime?
+
+  @@index([organizerId, releasedAt])
+}
+
+/* -------------------------------------------------------------------------- */
+/* Contributions                                                               */
+/* -------------------------------------------------------------------------- */
+
+model Contribution {
+  id              String             @id @default(cuid())
+  eventId         String
+  event           Event              @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  bookingId       String?
+  booking         Booking?           @relation(fields: [bookingId], references: [id])
+  contributorName String
+  phone           String?
+  pledgedAmount   BigInt
+  receivedAmount  BigInt             @default(0)
+  currency        String             @default("KES")
+  status          ContributionStatus @default(PLEDGED)
+  createdAt       DateTime           @default(now())
+
+  payments ContributionPayment[]
+
+  @@index([eventId, status])
+}
+
+model ContributionPayment {
+  id             String        @id @default(cuid())
+  contributionId String
+  contribution   Contribution  @relation(fields: [contributionId], references: [id], onDelete: Cascade)
+  amount         BigInt
+  currency       String        @default("KES")
+  method         PaymentMethod
+  reference      String?
+  paidAt         DateTime      @default(now())
+}
+
+/* -------------------------------------------------------------------------- */
+/* Marketing                                                                   */
+/* -------------------------------------------------------------------------- */
+
+model PromoCode {
+  id            String    @id @default(cuid())
+  eventId       String
+  event         Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  code          String
+  discountBps   Int?
+  discountFixed BigInt?
+  currency      String    @default("KES")
+  maxRedemptions Int?
+  redeemedCount Int       @default(0)
+  startsAt      DateTime?
+  endsAt        DateTime?
+
+  @@unique([eventId, code])
+}
+
+model AffiliateLink {
+  id          String   @id @default(cuid())
+  eventId     String
+  code        String   @unique
+  ownerUserId String?
+  clicks      Int      @default(0)
+  conversions Int      @default(0)
+  createdAt   DateTime @default(now())
+}
+
+/* -------------------------------------------------------------------------- */
+/* Check-in & offline scanning                                                 */
+/* -------------------------------------------------------------------------- */
+
+model CheckIn {
+  id               String           @id @default(cuid())
+  eventId          String
+  event            Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  occurrenceId     String?
+  occurrence       EventOccurrence? @relation(fields: [occurrenceId], references: [id])
+  ticketId         String?
+  ticket           Ticket?          @relation(fields: [ticketId], references: [id])
+  bookingId        String?
+  booking          Booking?         @relation(fields: [bookingId], references: [id])
+  result           CheckInResult
+  scannedByUserId  String?
+  deviceId         String?
+  overrideReason   String?
+  /// Set when the scan was recorded offline and later synced.
+  offlineRecordedAt DateTime?
+  at               DateTime         @default(now())
+
+  @@index([eventId, at])
+  @@index([ticketId])
+}
+
+model ScannerDevice {
+  id             String    @id @default(cuid())
+  eventId        String
+  event          Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  label          String
+  gate           String?
+  publicKey      String
+  credentialHash String
+  expiresAt      DateTime
+  revokedAt      DateTime?
+  lastSyncAt     DateTime?
+  createdAt      DateTime  @default(now())
+
+  batches ScannerSyncBatch[]
+
+  @@index([eventId, revokedAt])
+}
+
+model ScannerSyncBatch {
+  id           String        @id @default(cuid())
+  deviceId     String
+  device       ScannerDevice @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  /// Offline scan records; conflicts are resolved by earliest scan wins and
+  /// later duplicates are flagged for review.
+  records      Json
+  recordCount  Int           @default(0)
+  conflictCount Int          @default(0)
+  receivedAt   DateTime      @default(now())
+
+  @@index([deviceId, receivedAt])
+}
+
+/* -------------------------------------------------------------------------- */
+/* Notifications                                                               */
+/* -------------------------------------------------------------------------- */
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String?
+  user      User?     @relation(fields: [userId], references: [id])
+  channel   String
+  template  String
+  to        String
+  payload   Json      @default("{}")
+  sentAt    DateTime?
+  failedAt  DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model NotificationPreference {
+  userId          String  @id
+  user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emailEnabled    Boolean @default(true)
+  smsEnabled      Boolean @default(true)
+  pushEnabled     Boolean @default(false)
+  whatsappEnabled Boolean @default(false)
+  marketingOptIn  Boolean @default(false)
+}
+
+/* -------------------------------------------------------------------------- */
+/* Risk & fraud                                                                */
+/* -------------------------------------------------------------------------- */
+
+model RiskEvent {
+  id          String      @id @default(cuid())
+  subjectType String
+  subjectId   String
+  outcome     RiskOutcome
+  score       Int
+  reasonCodes String[]    @default([])
+  signals     Json        @default("{}")
+  at          DateTime    @default(now())
+
+  reviews ManualReview[]
+
+  @@index([subjectType, subjectId, at])
+  @@index([outcome, at])
+}
+
+model RiskScore {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  score     Int
+  band      String
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId])
+}
+
+model ManualReview {
+  id           String    @id @default(cuid())
+  riskEventId  String
+  riskEvent    RiskEvent @relation(fields: [riskEventId], references: [id], onDelete: Cascade)
+  assignedTo   String?
+  status       String    @default("OPEN")
+  decision     String?
+  decisionNote String?
+  createdAt    DateTime  @default(now())
+  decidedAt    DateTime?
+
+  @@index([status, createdAt])
+}
+
+model Dispute {
+  id         String    @id @default(cuid())
+  paymentId  String
+  reason     String
+  amount     BigInt
+  currency   String    @default("KES")
+  status     String    @default("OPEN")
+  openedAt   DateTime  @default(now())
+  resolvedAt DateTime?
+}
+
+model Chargeback {
+  id        String   @id @default(cuid())
+  disputeId String
+  amount    BigInt
+  currency  String   @default("KES")
+  receivedAt DateTime @default(now())
+}
+
+/* -------------------------------------------------------------------------- */
+/* Audit                                                                       */
+/* -------------------------------------------------------------------------- */
+
+/// Append-only for ordinary admins: UPDATE/DELETE are revoked at the database
+/// role level and only a break-glass role can alter rows.
+model AuditLog {
+  id            String   @id @default(cuid())
+  actorUserId   String?
+  actor         User?    @relation(fields: [actorUserId], references: [id])
+  actorRole     Role?
+  action        String
+  resourceType  String
+  resourceId    String
+  before        Json?
+  after         Json?
+  ip            String?
+  sessionId     String?
+  deviceId      String?
+  mfaSatisfied  Boolean  @default(false)
+  reason        String?
+  approvalChain String[] @default([])
+  at            DateTime @default(now())
+
+  @@index([resourceType, resourceId, at])
+  @@index([actorUserId, at])
+}
+
+/// Idempotency keys for mutating API calls, with the stored response so a
+/// retried request returns the original result instead of double-charging.
+model IdempotencyRecord {
+  key         String   @id
+  endpoint    String
+  requestHash String
+  status      Int
+  response    Json
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime
+
+  @@index([expiresAt])
+}
