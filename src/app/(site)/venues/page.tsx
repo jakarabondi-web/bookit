@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { MapPin, Users } from "lucide-react";
 import { getContainer } from "@/server/container";
@@ -8,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/states";
 import { CITIES } from "@/lib/cities";
 import { pluralise } from "@/lib/format";
+import { venueImage } from "@/lib/venue-images";
 
 export const metadata: Metadata = {
   title: "Venues",
@@ -93,23 +95,37 @@ export default async function VenuesPage({
         <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {rows.map(({ venue, upcoming }) => (
             <li key={venue.id}>
-              <Card className="h-full transition-colors hover:border-primary/40">
-                <CardContent className="p-5">
-                  <div className="flex items-start justify-between gap-3">
-                    <h2 className="text-base font-semibold text-ink">
-                      <Link
-                        href={`/events?city=${encodeURIComponent(venue.city)}`}
-                        className="hover:text-primary"
-                      >
-                        {venue.name}
-                      </Link>
-                    </h2>
+              <Card className="h-full overflow-hidden transition-colors hover:border-primary/40">
+                <div className="relative aspect-[16/9] bg-surface-secondary">
+                  <Image
+                    src={venueImage(venue.id)}
+                    alt=""
+                    fill
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                    className="object-cover"
+                  />
+                  {/* Legibility scrim behind the badge, photo stays the hero. */}
+                  <div
+                    className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/45 to-transparent"
+                    aria-hidden="true"
+                  />
+                  <span className="absolute right-3 top-3">
                     {upcoming > 0 ? (
                       <Badge tone="brand">{pluralise(upcoming, "event")}</Badge>
                     ) : (
                       <Badge>No events</Badge>
                     )}
-                  </div>
+                  </span>
+                </div>
+                <CardContent className="p-5">
+                  <h2 className="text-base font-semibold text-ink">
+                    <Link
+                      href={`/events?city=${encodeURIComponent(venue.city)}`}
+                      className="hover:text-primary"
+                    >
+                      {venue.name}
+                    </Link>
+                  </h2>
 
                   <dl className="mt-3 flex flex-col gap-1.5 text-sm text-ink-secondary">
                     <div className="flex items-start gap-2">
