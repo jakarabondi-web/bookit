@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { MapPin, Users } from "lucide-react";
 import { getContainer } from "@/server/container";
+import { MapCanvas } from "@/components/common/map-canvas";
 import { Badge } from "@/components/ui/badge";
 import { BookitIcon } from "@/components/ui/bookit-icon";
 import { Card, CardContent } from "@/components/ui/card";
@@ -83,6 +84,29 @@ export default async function VenuesPage({
           ))}
         </ul>
       </nav>
+
+      {/* Every venue in the current filter, pinned. Zoom is capped so a
+          single-city view still shows streets rather than a rooftop. */}
+      {rows.some(({ venue }) => venue.latitude !== null && venue.longitude !== null) ? (
+        <div className="mb-8 overflow-hidden rounded-card border border-line">
+          <MapCanvas
+            className="h-72 sm:h-80"
+            maxZoom={13}
+            markers={rows
+              .filter(({ venue }) => venue.latitude !== null && venue.longitude !== null)
+              .map(({ venue, upcoming }) => ({
+                id: venue.id,
+                latitude: venue.latitude!,
+                longitude: venue.longitude!,
+                title: venue.name,
+                subtitle: `${venue.area}, ${venue.city} · ${
+                  upcoming > 0 ? pluralise(upcoming, "upcoming event") : "no upcoming events"
+                }`,
+                href: `/events?city=${encodeURIComponent(venue.city)}`,
+              }))}
+          />
+        </div>
+      ) : null}
 
       {rows.length === 0 ? (
         <EmptyState

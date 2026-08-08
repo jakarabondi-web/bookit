@@ -8,8 +8,10 @@ import { EVENT_TYPE_LABEL } from "@/domain/event-type-policy";
 import { getContainer } from "@/server/container";
 import { config } from "@/server/config";
 import { BookingPanel } from "@/components/events/booking-panel";
+import { MapCanvas } from "@/components/common/map-canvas";
 import { Badge } from "@/components/ui/badge";
 import { BookitIcon } from "@/components/ui/bookit-icon";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatDate, formatDateTime, formatEventWindow, formatPrice, formatTime, initials } from "@/lib/format";
 
@@ -201,36 +203,46 @@ export default async function EventDetailPage({
             </section>
           ) : null}
 
-          {/* Venue / map placeholder */}
+          {/* Venue map */}
           <section className="mt-8">
-            <h2 className="text-lg font-semibold text-ink">Location</h2>
+            <h2 className="text-lg font-semibold text-ink">Getting there</h2>
             <Card className="mt-4 overflow-hidden">
-              <div className="relative flex h-44 items-center justify-center bg-surface-secondary">
-                <div
-                  className="absolute inset-0 opacity-[0.18]"
-                  style={{
-                    backgroundImage:
-                      "linear-gradient(var(--color-line-strong) 1px, transparent 1px), linear-gradient(90deg, var(--color-line-strong) 1px, transparent 1px)",
-                    backgroundSize: "28px 28px",
-                  }}
-                  aria-hidden="true"
+              {venue.latitude !== null && venue.longitude !== null ? (
+                <MapCanvas
+                  className="h-56"
+                  markers={[
+                    {
+                      id: venue.id,
+                      latitude: venue.latitude,
+                      longitude: venue.longitude,
+                      title: venue.name,
+                      subtitle: venue.addressLine,
+                    },
+                  ]}
                 />
-                <div className="relative flex flex-col items-center gap-1.5 text-center">
-                  <BookitIcon name="venue" className="size-7 text-primary" />
+              ) : null}
+              <CardContent className="flex flex-wrap items-center justify-between gap-3 p-5">
+                <div className="min-w-0">
                   <p className="text-sm font-semibold text-ink">{venue.name}</p>
-                  <p className="text-xs text-muted">
-                    {venue.latitude?.toFixed(4)}, {venue.longitude?.toFixed(4)}
+                  <p className="mt-0.5 text-sm text-ink-secondary">{venue.addressLine}</p>
+                  <p className="mt-1 text-sm text-muted">
+                    Capacity {venue.capacity.toLocaleString("en-KE")}
+                    {venue.sections.length > 0
+                      ? ` · ${venue.sections.map((section) => section.name).join(", ")}`
+                      : ""}
                   </p>
                 </div>
-              </div>
-              <CardContent className="p-5">
-                <p className="text-sm text-ink-secondary">{venue.addressLine}</p>
-                <p className="mt-1 text-sm text-muted">
-                  Capacity {venue.capacity.toLocaleString("en-KE")}
-                  {venue.sections.length > 0
-                    ? ` · ${venue.sections.map((section) => section.name).join(", ")}`
-                    : ""}
-                </p>
+                {venue.latitude !== null && venue.longitude !== null ? (
+                  <Button variant="secondary" size="sm" asChild>
+                    <a
+                      href={`https://www.google.com/maps/dir/?api=1&destination=${venue.latitude},${venue.longitude}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Get directions
+                    </a>
+                  </Button>
+                ) : null}
               </CardContent>
             </Card>
           </section>

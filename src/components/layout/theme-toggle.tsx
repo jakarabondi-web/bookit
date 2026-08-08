@@ -5,8 +5,8 @@ import { Moon, Sun } from "lucide-react";
 
 type Theme = "light" | "dark";
 
-/** Fired after a toggle so every mounted ThemeToggle re-reads the theme. */
-const THEME_EVENT = "bookit-theme-change";
+/** Fired after a toggle so anything theme-reactive (icons, map tiles) re-reads it. */
+export const THEME_EVENT = "bookit-theme-change";
 
 /**
  * What the visitor is actually seeing right now: an explicit stamp from a
