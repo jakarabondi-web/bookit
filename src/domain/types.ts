@@ -42,6 +42,8 @@ export type LedgerAccountId = Id<"LedgerAccount">;
 export type PayoutId = Id<"Payout">;
 export type TableId = Id<"BanquetTable">;
 export type CampaignId = Id<"Campaign">;
+export type PromoCodeId = Id<"PromoCode">;
+export type AffiliateLinkId = Id<"AffiliateLink">;
 
 /* -------------------------------------------------------------------------- */
 /* Identity                                                                    */
@@ -239,7 +241,16 @@ export interface Order {
   buyerPhone: string | null;
   eventId: EventId;
   items: OrderItem[];
+  /** Net of any promo-code discount — this is what organizer revenue and fees are based on. */
   subtotal: Money;
+  /**
+   * Informational only: how much a promo code took off the raw ticket total
+   * (sum of `items[].lineTotal`). Never used in fee/ledger arithmetic —
+   * `subtotal` already reflects it — so nothing downstream needs to know a
+   * discount was involved.
+   */
+  discount: Money;
+  promoCodeId: PromoCodeId | null;
   fees: Money;
   total: Money;
   status: OrderStatus;
@@ -477,6 +488,47 @@ export interface Campaign {
   recipientCount: number;
   sentByUserId: UserId | null;
   sentAt: string;
+}
+
+/**
+ * A discount code scoped to one event. `kind` selects which value field is
+ * live — exactly one of `percentBps` / `fixedAmount` is set, enforced by
+ * `PromotionsService` at creation rather than by the type (a discriminated
+ * union would be more precise but makes every call site pattern-match for no
+ * real benefit here).
+ */
+export interface PromoCode {
+  id: PromoCodeId;
+  organizerId: OrganizerId;
+  eventId: EventId;
+  /** Normalized uppercase, unique per event. */
+  code: string;
+  kind: "PERCENT" | "FIXED";
+  percentBps: number | null;
+  fixedAmount: Money | null;
+  /** Redemption cap; null means unlimited. */
+  maxRedemptions: number | null;
+  redemptionCount: number;
+  startsAt: string;
+  endsAt: string | null;
+  disabledAt: string | null;
+  createdAt: string;
+}
+
+/**
+ * A trackable share link for one event. The `code` is a short, globally
+ * unique slug — `/go/:code` looks it up with no other context, so it can't
+ * be scoped by event the way a promo code is.
+ */
+export interface AffiliateLink {
+  id: AffiliateLinkId;
+  organizerId: OrganizerId;
+  eventId: EventId;
+  code: string;
+  /** Organizer-facing name, e.g. "DJ Mo — Instagram story". */
+  label: string;
+  clickCount: number;
+  createdAt: string;
 }
 
 export interface RiskEvent {

@@ -1,6 +1,6 @@
 import { OrderStatus, PaymentMethod, PaymentStatus, RiskOutcome, TicketStatus } from "@/domain/enums";
 import { DomainError, notFound, validationError } from "@/domain/errors";
-import { add, money, percentageOf, sum, zero, type Money } from "@/domain/money";
+import { add, money, percentageOf, subtract, sum, zero, type Money } from "@/domain/money";
 import { assertTransition, ORDER_TRANSITIONS } from "@/domain/state-machines";
 import type {
   ActorContext,
@@ -18,6 +18,7 @@ import type { UnitOfWork } from "../repositories/types";
 import type { AuditService } from "./audit-service";
 import { LedgerService, ACCOUNT } from "./ledger-service";
 import type { NotificationService } from "./notification-service";
+import { redeemPromoCode } from "./promotions-service";
 import type { RiskService } from "./risk-service";
 
 /**
@@ -48,6 +49,8 @@ export interface StartCheckoutInput {
   /** Payment method the buyer selected; FREE for zero-value orders. */
   method?: PaymentMethod;
   idempotencyKey?: string;
+  /** Case-insensitive; validated and redeemed atomically with the order. */
+  promoCode?: string;
 }
 
 export interface StartCheckoutResult {
@@ -179,10 +182,31 @@ export class CheckoutService {
         });
       }
 
-      const subtotalValue = sum(
+      const rawSubtotal = sum(
         items.map((item) => item.lineTotal),
         items[0]?.lineTotal.currency ?? "KES",
       );
+
+      // Redeeming here — inside this transaction — means a promo code is
+      // never marked used unless the whole order actually commits: if
+      // anything below throws, `runInTransaction` rolls the redemption back
+      // with everything else.
+      let discount = money(0, rawSubtotal.currency);
+      let promoCodeId: string | null = null;
+      if (input.promoCode) {
+        const applied = await redeemPromoCode(repos, {
+          eventId: event.id,
+          code: input.promoCode,
+          subtotal: rawSubtotal,
+          now: this.clock.nowIso(),
+        });
+        discount = applied.discount;
+        promoCodeId = applied.promoCodeId;
+      }
+
+      // `subtotal` is net of the discount from here on — it's what the
+      // organizer is actually owed, and what fees are actually based on.
+      const subtotalValue = subtract(rawSubtotal, discount);
       const fees = percentageOf(subtotalValue, config.checkout.serviceFeeBps);
       const total = add(subtotalValue, fees);
 
@@ -204,6 +228,8 @@ export class CheckoutService {
         eventId: event.id,
         items,
         subtotal: subtotalValue,
+        discount,
+        promoCodeId,
         fees,
         total,
         status: OrderStatus.CREATED,

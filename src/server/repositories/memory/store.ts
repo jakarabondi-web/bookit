@@ -6,6 +6,7 @@ import type {
   PrivateEventPage,
 } from "@/domain/private-event";
 import type {
+  AffiliateLink,
   AuditLog,
   BanquetTable,
   Booking,
@@ -24,6 +25,7 @@ import type {
   Payment,
   Payout,
   PrivateInvite,
+  PromoCode,
   ResaleListing,
   RiskEvent,
   Ticket,
@@ -86,6 +88,8 @@ export interface MemoryDb {
   checkins: Map<string, CheckIn>;
   riskEvents: Map<string, RiskEvent>;
   campaigns: Map<string, Campaign>;
+  promoCodes: Map<string, PromoCode>;
+  affiliateLinks: Map<string, AffiliateLink>;
   auditLogs: Map<string, AuditLog>;
   notifications: Map<string, Notification>;
   webhooks: Map<string, WebhookRecord>;
@@ -122,6 +126,8 @@ export function emptyDb(): MemoryDb {
     checkins: new Map(),
     riskEvents: new Map(),
     campaigns: new Map(),
+    promoCodes: new Map(),
+    affiliateLinks: new Map(),
     auditLogs: new Map(),
     notifications: new Map(),
     webhooks: new Map(),

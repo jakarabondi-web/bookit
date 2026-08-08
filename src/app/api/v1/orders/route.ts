@@ -21,6 +21,7 @@ const CheckoutSchema = z.object({
     .regex(/^(\+?254|0)\d{9}$/, "Enter a Kenyan phone number, e.g. 0712 345 678")
     .optional(),
   method: z.enum(PaymentMethod).optional(),
+  promoCode: z.string().min(1).optional(),
 });
 
 /**
@@ -45,6 +46,7 @@ export const POST = handler(async (request: Request) => {
       reference: result.order.reference,
       status: result.order.status,
       subtotal: result.order.subtotal,
+      discount: result.order.discount,
       fees: result.order.fees,
       total: result.order.total,
     },

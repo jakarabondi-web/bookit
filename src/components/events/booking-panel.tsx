@@ -1,10 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Minus, Plus, ShieldCheck } from "lucide-react";
+import { Minus, Plus, ShieldCheck, Tag } from "lucide-react";
 import { EventType } from "@/domain/enums";
 import { behaviourFor } from "@/domain/event-type-policy";
-import { add, money, percentageOf, type Money } from "@/domain/money";
+import { add, compare, money, percentageOf, subtract, type Money } from "@/domain/money";
 import type { Event, TicketType } from "@/domain/types";
 import { BookitIcon } from "@/components/ui/bookit-icon";
 import { Button } from "@/components/ui/button";
@@ -120,7 +120,7 @@ function TicketPurchase({
 
   const currency = ticketTypes[0]?.price.currency ?? "KES";
 
-  const { subtotal, fees, total, count } = useMemo(() => {
+  const { subtotal, count } = useMemo(() => {
     let sub = money(0, currency);
     let items = 0;
     for (const ticketType of ticketTypes) {
@@ -129,9 +129,61 @@ function TicketPurchase({
       items += quantity;
       sub = add(sub, money(ticketType.price.amount * quantity, currency));
     }
-    const fee = percentageOf(sub, serviceFeeBps);
-    return { subtotal: sub, fees: fee, total: add(sub, fee), count: items };
-  }, [quantities, ticketTypes, currency, serviceFeeBps]);
+    return { subtotal: sub, count: items };
+  }, [quantities, ticketTypes, currency]);
+
+  const [promoInput, setPromoInput] = useState("");
+  const [appliedCode, setAppliedCode] = useState<string | null>(null);
+  const [discount, setDiscount] = useState<Money>(money(0, currency));
+  const [promoStatus, setPromoStatus] = useState<
+    { kind: "idle" } | { kind: "busy" } | { kind: "applied" } | { kind: "error"; message: string }
+  >({ kind: "idle" });
+
+  /**
+   * Checked once, on "Apply" — not kept live against later cart changes.
+   * That preview is only ever a courtesy: checkout re-validates and redeems
+   * the code against whatever the cart actually is at submit time, so the
+   * amount actually charged is always correct even if this number goes
+   * stale (e.g. a fixed-amount code after the buyer removes a ticket).
+   */
+  async function applyPromo() {
+    const code = promoInput.trim();
+    if (!code || subtotal.amount === 0) return;
+    setPromoStatus({ kind: "busy" });
+    try {
+      const response = await fetch("/api/v1/promo-codes/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ eventId: event.id, code, subtotalMinor: subtotal.amount }),
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        setPromoStatus({ kind: "error", message: payload?.error?.message ?? "That code isn't valid" });
+        return;
+      }
+      setAppliedCode(code);
+      setDiscount(payload.data.discount);
+      setPromoStatus({ kind: "applied" });
+    } catch {
+      setPromoStatus({ kind: "error", message: "Could not check that code. Try again." });
+    }
+  }
+
+  function removePromo() {
+    setAppliedCode(null);
+    setPromoInput("");
+    setDiscount(money(0, currency));
+    setPromoStatus({ kind: "idle" });
+  }
+
+  // Discount is capped server-side at the raw subtotal, but the moment
+  // between changing quantity and the preview effect resolving could still
+  // momentarily overshoot a smaller cart — clamp here too rather than ever
+  // showing a negative chargeable amount.
+  const chargeable =
+    compare(discount, subtotal) > 0 ? money(0, currency) : subtract(subtotal, discount);
+  const fees = percentageOf(chargeable, serviceFeeBps);
+  const total = add(chargeable, fees);
 
   const perAccountLimit = event.policies.maxTicketsPerAccount;
   const overLimit = count > perAccountLimit;
@@ -164,6 +216,7 @@ function TicketPurchase({
           buyerEmail: email,
           buyerPhone: phone || undefined,
           method: "MPESA",
+          promoCode: appliedCode ?? undefined,
         }),
       });
       const payload = await response.json();
@@ -171,7 +224,11 @@ function TicketPurchase({
         setStatus({ kind: "error", message: payload?.error?.message ?? "Checkout failed" });
         return;
       }
-      setStatus({ kind: "ok", message: payload.data.customerMessage });
+      // The server re-validated and redeemed the code itself — this is what
+      // was actually charged, not the client's running preview.
+      const savedAmount = payload.data.order?.discount?.amount ?? 0;
+      const savedNote = savedAmount > 0 ? ` You saved ${formatPrice(payload.data.order.discount)}.` : "";
+      setStatus({ kind: "ok", message: `${payload.data.customerMessage}${savedNote}` });
     } catch {
       setStatus({ kind: "error", message: "We could not reach Bookit. Check your connection." });
     }
@@ -269,11 +326,55 @@ function TicketPurchase({
 
       {count > 0 ? (
         <>
+          {appliedCode ? (
+            <div className="flex items-center justify-between gap-2 rounded-card-sm border border-primary/25 bg-primary-tint px-3 py-2 text-sm">
+              <span className="flex items-center gap-1.5 font-medium text-primary">
+                <Tag className="size-3.5" />
+                {appliedCode}
+                {promoStatus.kind === "busy" ? " — checking…" : ""}
+              </span>
+              <button
+                type="button"
+                onClick={removePromo}
+                className="text-xs font-medium text-ink-secondary hover:text-ink"
+              >
+                Remove
+              </button>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <label htmlFor="promo-input" className="sr-only">
+                Promo code
+              </label>
+              <Input
+                id="promo-input"
+                value={promoInput}
+                onChange={(changeEvent) => setPromoInput(changeEvent.target.value)}
+                placeholder="Promo code"
+                className="flex-1"
+              />
+              <Button type="button" variant="secondary" onClick={applyPromo}>
+                Apply
+              </Button>
+            </div>
+          )}
+          {promoStatus.kind === "error" ? (
+            <p role="alert" className="text-xs font-medium text-error">
+              {promoStatus.message}
+            </p>
+          ) : null}
+
           <dl className="flex flex-col gap-1.5 rounded-card-sm bg-surface-secondary p-3.5 text-sm">
             <div className="flex justify-between">
               <dt className="text-muted">Subtotal</dt>
               <dd className="text-ink">{formatPrice(subtotal)}</dd>
             </div>
+            {discount.amount > 0 ? (
+              <div className="flex justify-between text-primary">
+                <dt>Promo discount</dt>
+                <dd>−{formatPrice(discount)}</dd>
+              </div>
+            ) : null}
             <div className="flex justify-between">
               <dt className="text-muted">Service fee</dt>
               <dd className="text-ink">{formatPrice(fees)}</dd>

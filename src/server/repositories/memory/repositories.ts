@@ -1,6 +1,7 @@
 import { InventoryState, TicketStatus } from "@/domain/enums";
 import { notFound } from "@/domain/errors";
 import type {
+  AffiliateLink,
   AuditLog,
   BanquetTable,
   Booking,
@@ -19,6 +20,7 @@ import type {
   Payment,
   Payout,
   PrivateInvite,
+  PromoCode,
   ResaleListing,
   RiskEvent,
   Ticket,
@@ -786,6 +788,63 @@ export function createMemoryRepositories(db: MemoryDb): R.Repositories {
     },
   };
 
+  const promoCodes: R.PromoCodeRepository = {
+    async create(promoCode: PromoCode) {
+      db.promoCodes.set(promoCode.id, promoCode);
+      return promoCode;
+    },
+    async findById(id) {
+      return db.promoCodes.get(id) ?? null;
+    },
+    async findByEventAndCode(eventId, code) {
+      return (
+        [...db.promoCodes.values()].find(
+          (promo) => promo.eventId === eventId && promo.code === code,
+        ) ?? null
+      );
+    },
+    async listByEvent(eventId) {
+      return [...db.promoCodes.values()]
+        .filter((promo) => promo.eventId === eventId)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    },
+    async listByOrganizer(organizerId) {
+      return [...db.promoCodes.values()]
+        .filter((promo) => promo.organizerId === organizerId)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    },
+    async update(id, patch) {
+      const next = patched(requireEntity(db.promoCodes.get(id), "PromoCode", id), patch);
+      db.promoCodes.set(id, next);
+      return next;
+    },
+  };
+
+  const affiliateLinks: R.AffiliateLinkRepository = {
+    async create(link: AffiliateLink) {
+      db.affiliateLinks.set(link.id, link);
+      return link;
+    },
+    async findByCode(code) {
+      return [...db.affiliateLinks.values()].find((link) => link.code === code) ?? null;
+    },
+    async listByEvent(eventId) {
+      return [...db.affiliateLinks.values()]
+        .filter((link) => link.eventId === eventId)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    },
+    async listByOrganizer(organizerId) {
+      return [...db.affiliateLinks.values()]
+        .filter((link) => link.organizerId === organizerId)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    },
+    async update(id, patch) {
+      const next = patched(requireEntity(db.affiliateLinks.get(id), "AffiliateLink", id), patch);
+      db.affiliateLinks.set(id, next);
+      return next;
+    },
+  };
+
   const audit: R.AuditRepository = {
     async append(entry: AuditLog) {
       // Append-only: an existing id is never overwritten.
@@ -884,6 +943,8 @@ export function createMemoryRepositories(db: MemoryDb): R.Repositories {
     checkins,
     risk,
     campaigns,
+    promoCodes,
+    affiliateLinks,
     audit,
     notifications,
     webhooks,

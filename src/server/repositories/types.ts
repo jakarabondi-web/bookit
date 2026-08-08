@@ -6,6 +6,7 @@ import type {
   PrivateEventPage,
 } from "@/domain/private-event";
 import type {
+  AffiliateLink,
   AuditLog,
   BanquetTable,
   Booking,
@@ -27,6 +28,7 @@ import type {
   Payment,
   Payout,
   PrivateInvite,
+  PromoCode,
   ResaleListing,
   RiskEvent,
   Ticket,
@@ -69,6 +71,8 @@ export interface Repositories {
   checkins: CheckInRepository;
   risk: RiskRepository;
   campaigns: CampaignRepository;
+  promoCodes: PromoCodeRepository;
+  affiliateLinks: AffiliateLinkRepository;
   audit: AuditRepository;
   notifications: NotificationRepository;
   webhooks: WebhookRepository;
@@ -301,6 +305,24 @@ export interface RiskRepository {
 export interface CampaignRepository {
   create(campaign: Campaign): Promise<Campaign>;
   listByOrganizer(organizerId: string): Promise<Campaign[]>;
+}
+
+export interface PromoCodeRepository {
+  create(promoCode: PromoCode): Promise<PromoCode>;
+  findById(id: string): Promise<PromoCode | null>;
+  /** `code` must already be normalized — repositories don't reinterpret data. */
+  findByEventAndCode(eventId: string, code: string): Promise<PromoCode | null>;
+  listByEvent(eventId: string): Promise<PromoCode[]>;
+  listByOrganizer(organizerId: string): Promise<PromoCode[]>;
+  update(id: string, patch: Partial<PromoCode>): Promise<PromoCode>;
+}
+
+export interface AffiliateLinkRepository {
+  create(link: AffiliateLink): Promise<AffiliateLink>;
+  findByCode(code: string): Promise<AffiliateLink | null>;
+  listByEvent(eventId: string): Promise<AffiliateLink[]>;
+  listByOrganizer(organizerId: string): Promise<AffiliateLink[]>;
+  update(id: string, patch: Partial<AffiliateLink>): Promise<AffiliateLink>;
 }
 
 export interface AuditRepository {

@@ -1,35 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Download, Link2, Percent, Share2 } from "lucide-react";
+import { Download, Share2 } from "lucide-react";
 import { DEMO_ORGANIZER_ID, getContainer } from "@/server/container";
 import { SEGMENT_LABEL, SEGMENT_PLAY, type Segment } from "@/server/services/crm-service";
 import { CampaignComposer } from "@/components/organizer/campaign-composer";
+import { PromotionsPanel } from "@/components/organizer/promotions-panel";
 import { SegmentBadge } from "@/components/organizer/segment-badge";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/states";
 import { formatDateTime } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Marketing" };
 
-const TOOLS = [
-  {
-    icon: Percent,
-    title: "Promo codes",
-    body: "Percentage or fixed-amount discounts, capped by redemption count and date window.",
-  },
-  {
-    icon: Link2,
-    title: "Affiliate links",
-    body: "Trackable links for partners and promoters, with click and conversion attribution.",
-  },
-  {
-    icon: Share2,
-    title: "Share cards",
-    body: "Open Graph previews generated per event so shared links look right everywhere.",
-  },
-];
+const APP_ORIGIN = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
 export default async function MarketingPage({
   searchParams,
@@ -39,11 +23,13 @@ export default async function MarketingPage({
   const params = await searchParams;
   const preselect = typeof params.segment === "string" ? [params.segment as Segment] : [];
 
-  const { catalog, crm, marketing } = getContainer();
-  const [events, summary, campaigns] = await Promise.all([
+  const { catalog, crm, marketing, promotions } = getContainer();
+  const [events, summary, campaigns, promoCodes, affiliateLinks] = await Promise.all([
     catalog.organizerEvents(DEMO_ORGANIZER_ID),
     crm.summary(DEMO_ORGANIZER_ID),
     marketing.listCampaigns(DEMO_ORGANIZER_ID),
+    promotions.listPromoCodes(DEMO_ORGANIZER_ID),
+    promotions.listAffiliateLinks(DEMO_ORGANIZER_ID),
   ]);
   const now = new Date().toISOString();
   const promotable = events.filter((eventSummary) => eventSummary.event.startsAt >= now);
@@ -57,24 +43,6 @@ export default async function MarketingPage({
           already know you.
         </p>
       </header>
-
-      <section>
-        <ul className="grid gap-4 sm:grid-cols-3">
-          {TOOLS.map((tool) => (
-            <li key={tool.title}>
-              <Card className="h-full">
-                <CardContent className="p-5">
-                  <span className="flex size-10 items-center justify-center rounded-xl bg-primary-tint text-primary">
-                    <tool.icon className="size-5" aria-hidden="true" />
-                  </span>
-                  <h2 className="mt-3 text-sm font-semibold text-ink">{tool.title}</h2>
-                  <p className="mt-1.5 text-sm text-ink-secondary">{tool.body}</p>
-                </CardContent>
-              </Card>
-            </li>
-          ))}
-        </ul>
-      </section>
 
       {/* Your audience — the CRM's segments, brought here to act on. */}
       <section>
@@ -170,9 +138,11 @@ export default async function MarketingPage({
       </section>
 
       <section>
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold text-ink">Campaigns by event</h2>
-          <Button size="sm">Create promo code</Button>
+        <div className="mb-4 flex items-baseline justify-between gap-3">
+          <h2 className="text-lg font-semibold text-ink">Promo codes & affiliate links</h2>
+          <p className="flex items-center gap-1.5 text-xs text-muted">
+            <Share2 className="size-3.5" /> Share cards are coming soon
+          </p>
         </div>
 
         {promotable.length === 0 ? (
@@ -182,29 +152,15 @@ export default async function MarketingPage({
             action={{ label: "Create event", href: "/organizer/events/new" }}
           />
         ) : (
-          <ul className="flex flex-col gap-3">
-            {promotable.map((eventSummary) => (
-              <li key={eventSummary.event.id}>
-                <Card>
-                  <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
-                    <div className="min-w-0">
-                      <p className="font-medium text-ink">{eventSummary.event.title}</p>
-                      <p className="mt-0.5 text-xs text-muted">
-                        {eventSummary.venue.name} · {eventSummary.venue.city}
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge>0 promo codes</Badge>
-                      <Badge>0 affiliate links</Badge>
-                      <Button size="sm" variant="secondary">
-                        Add code
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </li>
-            ))}
-          </ul>
+          <PromotionsPanel
+            events={promotable.map((eventSummary) => ({
+              id: eventSummary.event.id,
+              title: eventSummary.event.title,
+            }))}
+            promoCodes={promoCodes}
+            affiliateLinks={affiliateLinks}
+            origin={APP_ORIGIN}
+          />
         )}
       </section>
     </div>
