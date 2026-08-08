@@ -239,6 +239,20 @@ const venues: Venue[] = [
     sections: [{ id: "sec_eldoret_ga", name: "Main Lawn", capacity: 3000 }],
   },
   {
+    id: "ven_bicc",
+    name: "Bomas International Convention Centre",
+    city: "Nairobi",
+    area: "Lang'ata",
+    addressLine: "Bomas of Kenya, Forest Edge Road, Lang'ata, Nairobi",
+    capacity: 12000,
+    latitude: -1.3402,
+    longitude: 36.7568,
+    sections: [
+      { id: "sec_bicc_aud", name: "Main Auditorium", capacity: 5000 },
+      { id: "sec_bicc_expo", name: "Exhibition Halls", capacity: 7000 },
+    ],
+  },
+  {
     id: "ven_westlands_office",
     name: "Delta Corner Boardroom",
     city: "Nairobi",
@@ -779,6 +793,45 @@ const seedEvents: SeedEvent[] = [
       recurrence: null,
       featured: false,
     }),
+  },
+  {
+    event: makeEvent({
+      id: "evt_ea_tech_summit",
+      slug: "east-africa-tech-summit",
+      title: "East Africa Tech Summit",
+      subtitle: "80 speakers, 5 stages, one day",
+      description:
+        "The region's founders, operators and investors under one roof at the new Bomas International Convention Centre. Keynotes in the Main Auditorium, five parallel tracks in the Exhibition Halls, and a startup expo floor with 120 companies.",
+      type: EventType.PAID_TICKET,
+      status: EventStatus.ON_SALE,
+      visibility: EventVisibility.PUBLIC,
+      category: EventCategory.CONFERENCES,
+      tags: ["technology", "startups", "conference"],
+      organizerId: "org_summit",
+      venueId: "ven_bicc",
+      startsAt: at(19, 8, 30),
+      endsAt: at(19, 18),
+      heroImage: `${IMG}/venue-convention-centre.jpg`,
+      cardImage: `${IMG}/venue-convention-centre.jpg`,
+      capacity: null,
+      policies: policies({
+        transferAllowed: true,
+        maxTicketsPerAccount: 10,
+        refundPolicy: "Full refund up to 7 days before the summit.",
+      }),
+      agenda: [
+        { startsAt: at(19, 8, 30), title: "Registration and expo floor opens", description: null },
+        { startsAt: at(19, 10), title: "Opening keynote", description: "Main Auditorium" },
+        { startsAt: at(19, 13), title: "Track sessions", description: "Five parallel tracks" },
+        { startsAt: at(19, 17), title: "Investor mixer", description: "Exhibition Halls mezzanine" },
+      ],
+      recurrence: null,
+      featured: false,
+    }),
+    ticketTypes: [
+      { id: "tt_summit_std", name: "Delegate", priceMajor: 4500, quantity: 3000, sold: 1140, sectionId: "sec_bicc_expo" },
+      { id: "tt_summit_exec", name: "Executive", description: "Reserved auditorium seating, speaker lounge and lunch.", priceMajor: 12500, quantity: 400, sold: 168, sectionId: "sec_bicc_aud", maxPerOrder: 5 },
+    ],
   },
   {
     event: makeEvent({
