@@ -1866,7 +1866,6 @@ function seedSalesHistory(db: MemoryDb): void {
     lcgState = (lcgState * 1664525 + 1013904223) >>> 0;
     return lcgState / 2 ** 32;
   };
-  const pick = <T,>(items: readonly T[]): T => items[Math.floor(rand() * items.length)]!;
 
   interface Line {
     eventId: string;
@@ -1928,6 +1927,49 @@ function seedSalesHistory(db: MemoryDb): void {
   const WINDOW_DAYS = 60; // two full periods, so 30-day deltas compare real data
   let sequence = 0;
 
+  /**
+   * A stable pool of ~90 recurring buyers rather than a new stranger per
+   * order — otherwise every customer has exactly one order and the CRM's RFM
+   * segmentation has nothing to segment. The pool has deliberate texture:
+   * the first few indices are whales (heavily over-weighted), one cohort
+   * only buys in the first half of the window (they surface as at-risk and
+   * lapsed), and another only appears in the final ten days (they surface
+   * as new).
+   */
+  interface SeedBuyer {
+    name: string;
+    email: string;
+    phone: string;
+    weight: number;
+    activeWhen: (daysAgo: number) => boolean;
+  }
+  const BUYERS: SeedBuyer[] = Array.from({ length: 190 }, (_, index) => {
+    const name = KENYAN_NAMES[index % KENYAN_NAMES.length]!;
+    const churned = index % 4 === 2; // stopped buying three weeks ago
+    const fresh = index % 7 === 5 && !churned; // first seen in the last 10 days
+    return {
+      name,
+      email: `${name.split(" ")[0]!.toLowerCase()}.${name.split(" ")[1]!.toLowerCase()}${index}@example.co.ke`,
+      phone: `+2547${String(40000000 + index * 977).slice(0, 8)}`,
+      weight: index < 6 ? 8 : index < 30 ? 3 : 1,
+      activeWhen: churned
+        ? (daysAgo) => daysAgo > 21
+        : fresh
+          ? (daysAgo) => daysAgo < 10
+          : () => true,
+    };
+  });
+  const pickBuyer = (daysAgo: number): SeedBuyer => {
+    const eligible = BUYERS.filter((candidate) => candidate.activeWhen(daysAgo));
+    const totalWeight = eligible.reduce((sum, candidate) => sum + candidate.weight, 0);
+    let roll = rand() * totalWeight;
+    for (const candidate of eligible) {
+      roll -= candidate.weight;
+      if (roll <= 0) return candidate;
+    }
+    return eligible[eligible.length - 1]!;
+  };
+
   for (let daysAgo = WINDOW_DAYS - 1; daysAgo >= 0; daysAgo -= 1) {
     const date = new Date();
     date.setDate(date.getDate() - daysAgo);
@@ -1954,7 +1996,7 @@ function seedSalesHistory(db: MemoryDb): void {
         const quantity = rand() < 0.45 ? 1 : rand() < 0.75 ? 2 : rand() < 0.9 ? 3 : 4;
         const subtotal = unitPrice * quantity;
         const fees = Math.round((subtotal * FEE_BPS) / 10000);
-        const buyer = pick(KENYAN_NAMES);
+        const buyer = pickBuyer(daysAgo);
         const hour = 8 + Math.floor(rand() * 14);
         const createdAt = at(-daysAgo, hour, Math.floor(rand() * 60));
         // ~2% refunded, so the orders page and refund rate have texture.
@@ -1964,8 +2006,8 @@ function seedSalesHistory(db: MemoryDb): void {
           id: `ord_hist_${sequence}`,
           reference: `BK-ORD${String(10000 + sequence)}`,
           userId: null,
-          buyerEmail: `${buyer.split(" ")[0]!.toLowerCase()}.${sequence}@example.co.ke`,
-          buyerPhone: `+2547${String(40000000 + sequence * 131).slice(0, 8)}`,
+          buyerEmail: buyer.email,
+          buyerPhone: buyer.phone,
           eventId: line.eventId,
           items: [
             {

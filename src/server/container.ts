@@ -11,6 +11,7 @@ import { DEMO_ORGANIZER_ID, DEMO_USER_ID, seedDatabase } from "./seed/seed-data"
 import { AuditService } from "./services/audit-service";
 import { BookingService } from "./services/booking-service";
 import { CatalogService } from "./services/catalog-service";
+import { CrmService } from "./services/crm-service";
 import { CheckInService } from "./services/checkin-service";
 import { CheckoutService } from "./services/checkout-service";
 import { CredentialService } from "./services/credential-service";
@@ -35,6 +36,7 @@ import { TicketService } from "./services/ticket-service";
 export interface Container {
   uow: UnitOfWork;
   catalog: CatalogService;
+  crm: CrmService;
   checkout: CheckoutService;
   payments: PaymentService;
   tickets: TicketService;
@@ -66,6 +68,7 @@ export function createContainer(options: { seed?: boolean } = {}): Container {
   const notifications = new NotificationService(uow.repos.notifications, undefined, clock);
   const credentials = new CredentialService(clock);
   const catalog = new CatalogService(uow);
+  const crm = new CrmService(uow);
 
   const providers = new Map<PaymentMethod, PaymentProvider>([
     [PaymentMethod.MPESA, new MpesaProvider()],
@@ -124,6 +127,7 @@ export function createContainer(options: { seed?: boolean } = {}): Container {
   return {
     uow,
     catalog,
+    crm,
     checkout,
     payments,
     tickets,
