@@ -156,9 +156,20 @@ function QrDialog({ ticket, event }: { ticket: Ticket; event: Event }) {
     }
   }, [ticket.id]);
 
+  // The first fetch hangs off the open handler rather than an effect: it
+  // answers the user opening the dialog, so it belongs with that event.
+  const handleOpenChange = useCallback(
+    (next: boolean) => {
+      setOpen(next);
+      if (next) void refresh();
+    },
+    [refresh],
+  );
+
+  // While the dialog is open, count the credential down and replace it as it
+  // expires.
   useEffect(() => {
     if (!open) return;
-    void refresh();
     const timer = setInterval(() => {
       setSecondsLeft((current) => {
         if (current <= 1) {
@@ -172,7 +183,7 @@ function QrDialog({ ticket, event }: { ticket: Ticket; event: Event }) {
   }, [open, refresh]);
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button size="sm">
           <BookitIcon name="qr" className="size-4" />

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect } from "react";
 import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -38,7 +39,7 @@ export default function Error({
       <div className="mt-6 flex flex-wrap justify-center gap-3">
         <Button onClick={reset}>Try again</Button>
         <Button asChild variant="secondary">
-          <a href="/help/contact">Contact support</a>
+          <Link href="/help/contact">Contact support</Link>
         </Button>
       </div>
     </div>

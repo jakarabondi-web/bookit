@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { EventCategory, EventType, EventVisibility } from "@/domain/enums";
@@ -152,7 +153,7 @@ export function EventWizard() {
               Create another
             </Button>
             <Button asChild>
-              <a href="/organizer/events">Back to events</a>
+              <Link href="/organizer/events">Back to events</Link>
             </Button>
           </div>
         </CardContent>
