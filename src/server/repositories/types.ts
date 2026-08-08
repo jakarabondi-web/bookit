@@ -9,6 +9,7 @@ import type {
   AuditLog,
   BanquetTable,
   Booking,
+  Campaign,
   CheckIn,
   Contribution,
   Event,
@@ -67,6 +68,7 @@ export interface Repositories {
   contributions: ContributionRepository;
   checkins: CheckInRepository;
   risk: RiskRepository;
+  campaigns: CampaignRepository;
   audit: AuditRepository;
   notifications: NotificationRepository;
   webhooks: WebhookRepository;
@@ -294,6 +296,11 @@ export interface RiskRepository {
   record(event: RiskEvent): Promise<RiskEvent>;
   listForSubject(subjectType: string, subjectId: string): Promise<RiskEvent[]>;
   listRecent(limit: number): Promise<RiskEvent[]>;
+}
+
+export interface CampaignRepository {
+  create(campaign: Campaign): Promise<Campaign>;
+  listByOrganizer(organizerId: string): Promise<Campaign[]>;
 }
 
 export interface AuditRepository {

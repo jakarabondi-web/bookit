@@ -4,6 +4,7 @@ import type {
   AuditLog,
   BanquetTable,
   Booking,
+  Campaign,
   CheckIn,
   Contribution,
   Event,
@@ -773,6 +774,18 @@ export function createMemoryRepositories(db: MemoryDb): R.Repositories {
     },
   };
 
+  const campaigns: R.CampaignRepository = {
+    async create(campaign: Campaign) {
+      db.campaigns.set(campaign.id, campaign);
+      return campaign;
+    },
+    async listByOrganizer(organizerId) {
+      return [...db.campaigns.values()]
+        .filter((campaign) => campaign.organizerId === organizerId)
+        .sort((a, b) => b.sentAt.localeCompare(a.sentAt));
+    },
+  };
+
   const audit: R.AuditRepository = {
     async append(entry: AuditLog) {
       // Append-only: an existing id is never overwritten.
@@ -870,6 +883,7 @@ export function createMemoryRepositories(db: MemoryDb): R.Repositories {
     contributions,
     checkins,
     risk,
+    campaigns,
     audit,
     notifications,
     webhooks,

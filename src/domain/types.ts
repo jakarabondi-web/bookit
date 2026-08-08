@@ -41,6 +41,7 @@ export type ListingId = Id<"ResaleListing">;
 export type LedgerAccountId = Id<"LedgerAccount">;
 export type PayoutId = Id<"Payout">;
 export type TableId = Id<"BanquetTable">;
+export type CampaignId = Id<"Campaign">;
 
 /* -------------------------------------------------------------------------- */
 /* Identity                                                                    */
@@ -457,6 +458,25 @@ export interface CheckIn {
   deviceId: string | null;
   overrideReason: string | null;
   at: string;
+}
+
+/**
+ * A message sent to a CRM audience — one or more RFM segments, optionally
+ * scoped to people who bought a specific event. The segment itself is
+ * derived and never stored (see `CrmService`); a campaign freezes who it
+ * reached at send time, which is what a "campaign history" has to answer.
+ */
+export interface Campaign {
+  id: CampaignId;
+  organizerId: OrganizerId;
+  /** RFM segment keys, e.g. ["CHAMPION", "LOYAL"]. Matches crm-service's Segment union. */
+  segments: string[];
+  channel: "EMAIL" | "SMS";
+  subject: string;
+  body: string;
+  recipientCount: number;
+  sentByUserId: UserId | null;
+  sentAt: string;
 }
 
 export interface RiskEvent {

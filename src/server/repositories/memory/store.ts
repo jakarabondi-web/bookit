@@ -9,6 +9,7 @@ import type {
   AuditLog,
   BanquetTable,
   Booking,
+  Campaign,
   CheckIn,
   Contribution,
   Event,
@@ -84,6 +85,7 @@ export interface MemoryDb {
   contributions: Map<string, Contribution>;
   checkins: Map<string, CheckIn>;
   riskEvents: Map<string, RiskEvent>;
+  campaigns: Map<string, Campaign>;
   auditLogs: Map<string, AuditLog>;
   notifications: Map<string, Notification>;
   webhooks: Map<string, WebhookRecord>;
@@ -119,6 +121,7 @@ export function emptyDb(): MemoryDb {
     contributions: new Map(),
     checkins: new Map(),
     riskEvents: new Map(),
+    campaigns: new Map(),
     auditLogs: new Map(),
     notifications: new Map(),
     webhooks: new Map(),

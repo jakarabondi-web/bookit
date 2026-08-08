@@ -141,6 +141,20 @@ export function customerId(email: string): string {
   return Buffer.from(email.toLowerCase()).toString("base64url");
 }
 
+export const ALL_SEGMENTS: Segment[] = [
+  "CHAMPION",
+  "LOYAL",
+  "BIG_SPENDER",
+  "PROMISING",
+  "NEW",
+  "AT_RISK",
+  "LAPSED",
+];
+
+export function isSegment(value: string): value is Segment {
+  return (ALL_SEGMENTS as string[]).includes(value);
+}
+
 export class CrmService {
   constructor(private readonly uow: UnitOfWork) {}
 
@@ -238,6 +252,13 @@ export class CrmService {
 
     profiles.sort((a, b) => b.spend.amount - a.spend.amount);
     return profiles;
+  }
+
+  /** Customers in any of the given segments — the audience a campaign targets. */
+  async customersInSegments(organizerId: string, segments: Segment[]): Promise<CustomerProfile[]> {
+    const wanted = new Set(segments);
+    const profiles = await this.customers(organizerId);
+    return profiles.filter((profile) => wanted.has(profile.segment));
   }
 
   async customer(

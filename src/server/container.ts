@@ -12,6 +12,7 @@ import { AuditService } from "./services/audit-service";
 import { BookingService } from "./services/booking-service";
 import { CatalogService } from "./services/catalog-service";
 import { CrmService } from "./services/crm-service";
+import { MarketingService } from "./services/marketing-service";
 import { CheckInService } from "./services/checkin-service";
 import { CheckoutService } from "./services/checkout-service";
 import { CredentialService } from "./services/credential-service";
@@ -37,6 +38,7 @@ export interface Container {
   uow: UnitOfWork;
   catalog: CatalogService;
   crm: CrmService;
+  marketing: MarketingService;
   checkout: CheckoutService;
   payments: PaymentService;
   tickets: TicketService;
@@ -69,6 +71,7 @@ export function createContainer(options: { seed?: boolean } = {}): Container {
   const credentials = new CredentialService(clock);
   const catalog = new CatalogService(uow);
   const crm = new CrmService(uow);
+  const marketing = new MarketingService(uow, { crm, notifications }, clock);
 
   const providers = new Map<PaymentMethod, PaymentProvider>([
     [PaymentMethod.MPESA, new MpesaProvider()],
@@ -128,6 +131,7 @@ export function createContainer(options: { seed?: boolean } = {}): Container {
     uow,
     catalog,
     crm,
+    marketing,
     checkout,
     payments,
     tickets,

@@ -26,7 +26,8 @@ export type NotificationTemplate =
   | "payout.paid"
   | "payout.destination_changed"
   | "organizer.verification_updated"
-  | "security.alert";
+  | "security.alert"
+  | "marketing.campaign";
 
 export interface SendNotificationInput {
   userId: string | null;
