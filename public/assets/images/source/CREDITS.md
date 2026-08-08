@@ -41,21 +41,17 @@ Mapped to venues in `src/lib/venue-images.ts`. KICC Grounds reuses
 | `venue-ballroom.jpg` | [Chairs and Tables in Hotel](https://www.pexels.com/photo/chairs-and-tables-in-hotel-3201921/) | — |
 | `venue-beach.jpg` | [A White Sand Beach with Coconut Trees and Umbrellas](https://www.pexels.com/photo/a-white-sand-beach-with-coconut-trees-and-umbrellas-13292007/) | — |
 | `venue-boardroom.jpg` | [An Interior of a Meeting Room](https://www.pexels.com/photo/an-interior-of-a-meeting-room-5511124/) | Mike van Schoonderwalt |
-| `venue-convention-centre.jpg` | [Oregon Convention Center in Portland](https://www.pexels.com/photo/oregon-convention-center-in-portland-18173828/) — stand-in for the Bomas International Convention Centre until licensed BICC photography is available | Stephen McDaniel |
 | `venue-homestead.jpg` | [Elegant Outdoor Wedding Reception Table Setup](https://www.pexels.com/photo/elegant-outdoor-wedding-reception-table-setup-28976220/) | Angel Ayala |
 
-## Bomas International Convention Centre — official renders (pending)
+## Bomas International Convention Centre — official renders
 
-Supplied renders of the BICC (Bomas of Kenya Ltd project media). Drop the
-files below into this directory as full-resolution 16:9 crops and run
-`npm run assets`; the venue card upgrades and the event page's
-"Inside the venue" gallery appears automatically (`src/server/venue-media.ts`
-gates both on the files existing). Until then the venue card uses the Pexels
-convention-centre stand-in listed above.
+Official project renders (Bomas of Kenya Ltd media), supplied by the
+project owner. `src/server/venue-media.ts` maps them to the venue card and
+the event page's "Inside the venue" gallery.
 
 | File | Subject |
 | --- | --- |
 | `venue-bicc-exterior.jpg` | Complex exterior from the gardens |
-| `venue-bicc-auditorium.jpg` | Main Auditorium (3,500 seats) |
+| `venue-bicc-auditorium.jpg` | Main Auditorium |
 | `venue-bicc-boardroom.jpg` | Executive boardroom |
 | `venue-bicc-council.jpg` | Council chamber |

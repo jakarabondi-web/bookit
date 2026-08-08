@@ -17,7 +17,7 @@ const VENUE_IMAGE: Record<string, string> = {
   ven_kasarani: "/assets/images/venue-stadium-aerial.jpg",
   ven_kasarani_indoor: "/assets/images/venue-arena.jpg",
   ven_kicc: "/assets/images/city-nairobi.jpg",
-  ven_bicc: "/assets/images/venue-convention-centre.jpg",
+  ven_bicc: "/assets/images/venue-bicc-exterior.jpg",
   ven_uhuru: "/assets/images/venue-gardens.jpg",
   ven_sarit: "/assets/images/venue-expo.jpg",
   ven_safari_park: "/assets/images/venue-ballroom.jpg",

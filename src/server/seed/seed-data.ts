@@ -811,8 +811,8 @@ const seedEvents: SeedEvent[] = [
       venueId: "ven_bicc",
       startsAt: at(19, 8, 30),
       endsAt: at(19, 18),
-      heroImage: `${IMG}/venue-convention-centre.jpg`,
-      cardImage: `${IMG}/venue-convention-centre.jpg`,
+      heroImage: `${IMG}/venue-bicc-exterior.jpg`,
+      cardImage: `${IMG}/venue-bicc-exterior.jpg`,
       capacity: null,
       policies: policies({
         transferAllowed: true,
