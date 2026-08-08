@@ -8,7 +8,8 @@ import { EVENT_TYPE_LABEL } from "@/domain/event-type-policy";
 import { getContainer } from "@/server/container";
 import { config } from "@/server/config";
 import { BookingPanel } from "@/components/events/booking-panel";
-import { MapCanvas } from "@/components/common/map-canvas";
+import { MapEmbed } from "@/components/common/map-embed";
+import { venueGallery } from "@/server/venue-media";
 import { Badge } from "@/components/ui/badge";
 import { BookitIcon } from "@/components/ui/bookit-icon";
 import { Button } from "@/components/ui/button";
@@ -46,6 +47,7 @@ export default async function EventDetailPage({
   if (!detail) notFound();
 
   const { event, organizer, venue, ticketTypes, occurrences, remainingCapacity } = detail;
+  const gallery = venueGallery(venue.id);
 
   // Live availability per tier drives the quantity steppers in the panel.
   const availability: Record<string, number> = {};
@@ -208,17 +210,11 @@ export default async function EventDetailPage({
             <h2 className="text-lg font-semibold text-ink">Getting there</h2>
             <Card className="mt-4 overflow-hidden">
               {venue.latitude !== null && venue.longitude !== null ? (
-                <MapCanvas
-                  className="h-56"
-                  markers={[
-                    {
-                      id: venue.id,
-                      latitude: venue.latitude,
-                      longitude: venue.longitude,
-                      title: venue.name,
-                      subtitle: venue.addressLine,
-                    },
-                  ]}
+                <MapEmbed
+                  className="h-56 sm:h-64"
+                  query={`${venue.latitude},${venue.longitude}`}
+                  zoom={15}
+                  title={`Map showing ${venue.name}`}
                 />
               ) : null}
               <CardContent className="flex flex-wrap items-center justify-between gap-3 p-5">
@@ -246,6 +242,31 @@ export default async function EventDetailPage({
               </CardContent>
             </Card>
           </section>
+
+          {/* Venue gallery — only for venues with published media. */}
+          {gallery.length > 0 ? (
+            <section className="mt-8">
+              <h2 className="text-lg font-semibold text-ink">Inside the venue</h2>
+              <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {gallery.map((item) => (
+                  <li key={item.src}>
+                    <figure>
+                      <div className="relative aspect-[4/3] overflow-hidden rounded-card-sm border border-line bg-surface-secondary">
+                        <Image
+                          src={item.src}
+                          alt={item.caption}
+                          fill
+                          sizes="(max-width: 640px) 50vw, 25vw"
+                          className="object-cover"
+                        />
+                      </div>
+                      <figcaption className="mt-1.5 text-xs text-muted">{item.caption}</figcaption>
+                    </figure>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
 
           {/* Policies */}
           <section className="mt-8">

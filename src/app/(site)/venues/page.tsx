@@ -3,14 +3,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { MapPin, Users } from "lucide-react";
 import { getContainer } from "@/server/container";
-import { MapCanvas } from "@/components/common/map-canvas";
+import { venueHeroImage } from "@/server/venue-media";
+import { MapEmbed } from "@/components/common/map-embed";
 import { Badge } from "@/components/ui/badge";
 import { BookitIcon } from "@/components/ui/bookit-icon";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/states";
 import { CITIES } from "@/lib/cities";
 import { pluralise } from "@/lib/format";
-import { venueImage } from "@/lib/venue-images";
 
 export const metadata: Metadata = {
   title: "Venues",
@@ -85,28 +85,16 @@ export default async function VenuesPage({
         </ul>
       </nav>
 
-      {/* Every venue in the current filter, pinned. Zoom is capped so a
-          single-city view still shows streets rather than a rooftop. */}
-      {rows.some(({ venue }) => venue.latitude !== null && venue.longitude !== null) ? (
-        <div className="mb-8 overflow-hidden rounded-card border border-line">
-          <MapCanvas
-            className="h-72 sm:h-80"
-            maxZoom={13}
-            markers={rows
-              .filter(({ venue }) => venue.latitude !== null && venue.longitude !== null)
-              .map(({ venue, upcoming }) => ({
-                id: venue.id,
-                latitude: venue.latitude!,
-                longitude: venue.longitude!,
-                title: venue.name,
-                subtitle: `${venue.area}, ${venue.city} · ${
-                  upcoming > 0 ? pluralise(upcoming, "upcoming event") : "no upcoming events"
-                }`,
-                href: `/events?city=${encodeURIComponent(venue.city)}`,
-              }))}
-          />
-        </div>
-      ) : null}
+      {/* Orientation map for the current filter — Google's own embed, so it
+          loads from their CDN with zero JavaScript of ours. */}
+      <div className="mb-8 overflow-hidden rounded-card border border-line">
+        <MapEmbed
+          className="h-64 sm:h-72"
+          query={cityFilter ? `${cityFilter}, Kenya` : "Kenya"}
+          zoom={cityFilter ? 12 : 6}
+          title={cityFilter ? `Map of ${cityFilter}` : "Map of Kenya"}
+        />
+      </div>
 
       {rows.length === 0 ? (
         <EmptyState
@@ -129,7 +117,7 @@ export default async function VenuesPage({
               <Card className="h-full overflow-hidden transition-colors group-hover:border-primary/40">
                 <div className="relative aspect-[16/9] bg-surface-secondary">
                   <Image
-                    src={venueImage(venue.id)}
+                    src={venueHeroImage(venue.id)}
                     alt=""
                     fill
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
