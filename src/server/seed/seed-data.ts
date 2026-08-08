@@ -1,6 +1,7 @@
 import {
   BookingStatus,
   ContributionStatus,
+  LedgerAccountType,
   EventCategory,
   EventStatus,
   EventType,
@@ -25,6 +26,8 @@ import type {
   EventOccurrence,
   EventPolicies,
   InventoryUnit,
+  LedgerAccount,
+  LedgerTransaction,
   Order,
   Organizer,
   PrivateInvite,
@@ -35,6 +38,7 @@ import type {
   Venue,
 } from "@/domain/types";
 import { addDays, addHours } from "../lib/clock";
+import { ACCOUNT } from "../services/ledger-service";
 import type { MemoryDb } from "../repositories/memory/store";
 
 /**
@@ -1149,6 +1153,92 @@ export function seedDatabase(db: MemoryDb): void {
   seedInvites(db);
   seedConsumerHistory(db);
   seedContributions(db);
+  seedLedger(db);
+}
+
+/**
+ * Posts the ledger entries the seeded orders would have produced.
+ *
+ * Without this the demo shows revenue on the dashboard but a zero balance on
+ * the finance page, because organizer balances are read from the ledger rather
+ * than summed from orders. The entries mirror exactly what
+ * `CheckoutService.fulfilOrder` posts at runtime.
+ */
+function seedLedger(db: MemoryDb): void {
+  const accountFor = (
+    code: string,
+    name: string,
+    type: LedgerAccountType,
+    organizerId: string | null,
+  ): LedgerAccount => {
+    for (const account of db.ledgerAccounts.values()) {
+      if (account.code === code) return account;
+    }
+    const account: LedgerAccount = {
+      id: `acct_${db.ledgerAccounts.size}`,
+      code,
+      name,
+      type,
+      ownerOrganizerId: organizerId,
+      currency: "KES",
+    };
+    db.ledgerAccounts.set(account.id, account);
+    return account;
+  };
+
+  for (const order of db.orders.values()) {
+    if (order.status !== OrderStatus.FULFILLED && order.status !== OrderStatus.PAID) continue;
+    const event = db.events.get(order.eventId);
+    if (!event) continue;
+
+    const customerFunds = accountFor(
+      ACCOUNT.CUSTOMER_FUNDS,
+      "Customer funds",
+      LedgerAccountType.ASSET,
+      null,
+    );
+    const organizerPayable = accountFor(
+      ACCOUNT.organizerPayable(event.organizerId),
+      "Organizer payable",
+      LedgerAccountType.LIABILITY,
+      event.organizerId,
+    );
+    const feeRevenue = accountFor(
+      ACCOUNT.PLATFORM_FEE_REVENUE,
+      "Platform fee revenue",
+      LedgerAccountType.REVENUE,
+      null,
+    );
+
+    const transaction: LedgerTransaction = {
+      id: `ltx_seed_${order.id}`,
+      reference: `sale:${order.id}`,
+      kind: "TICKET_SALE",
+      postedAt: order.paidAt ?? order.createdAt,
+      metadata: { orderId: order.id, eventId: order.eventId, method: PaymentMethod.MPESA },
+      entries: [
+        {
+          accountId: customerFunds.id,
+          amount: order.total,
+          side: "DEBIT",
+          memo: `Order ${order.reference}`,
+        },
+        {
+          accountId: organizerPayable.id,
+          amount: order.subtotal,
+          side: "CREDIT",
+          memo: `Ticket revenue for ${event.title}`,
+        },
+        {
+          accountId: feeRevenue.id,
+          amount: order.fees,
+          side: "CREDIT",
+          memo: "Bookit service fee",
+        },
+      ],
+    };
+    db.ledgerTransactions.set(transaction.id, transaction);
+  }
 }
 
 function seedRecurringOccurrences(db: MemoryDb): void {

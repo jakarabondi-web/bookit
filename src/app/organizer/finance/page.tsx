@@ -89,7 +89,7 @@ export default async function FinancePage() {
       </header>
 
       <section aria-label="Balances">
-        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <ul className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           <li>
             <MetricCard
               label="Owed to you"

@@ -160,8 +160,11 @@ export function GuestListManager({
     {
       key: "email",
       header: "Email",
+      // Capped so the actions column still fits at 1280px without scrolling.
       render: (booking) => (
-        <span className="block max-w-[14rem] truncate">{booking.email ?? "—"}</span>
+        <span className="block max-w-[10rem] truncate" title={booking.email ?? undefined}>
+          {booking.email ?? "—"}
+        </span>
       ),
     },
     {
@@ -209,7 +212,7 @@ export function GuestListManager({
       : []),
     {
       key: "checkin",
-      header: "Check-in",
+      header: "In",
       render: (booking) =>
         booking.checkedInAt ? (
           <span className="inline-flex items-center gap-1 text-success">

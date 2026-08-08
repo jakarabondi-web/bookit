@@ -50,7 +50,7 @@ export default async function GuestListPage({ params }: { params: Promise<{ id: 
       </header>
 
       <section aria-label="Guest list summary">
-        <ul className="grid gap-4 sm:grid-cols-3 lg:grid-cols-6">
+        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6">
           <li>
             <MetricCard label="Confirmed" value={String(view.confirmed)} tone="brand" />
           </li>

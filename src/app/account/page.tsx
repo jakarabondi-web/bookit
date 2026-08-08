@@ -44,7 +44,7 @@ export default async function AccountOverviewPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <ul className="grid gap-4 sm:grid-cols-3">
+      <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
         {stats.map((stat) => (
           <li key={stat.label}>
             <Link href={stat.href} className="block">
