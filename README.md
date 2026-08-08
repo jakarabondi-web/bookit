@@ -22,7 +22,7 @@ events across every event type, guest lists, orders, tickets, contributions and
 a resale listing.
 
 ```bash
-npm test          # 79 domain and integration tests
+npm test          # 105 domain and integration tests
 npm run typecheck # tsc --noEmit, strict
 npm run build     # production build
 ```
@@ -39,6 +39,8 @@ npm run build     # production build
 | `/events` | Search and filter by query, city, category and event type; state lives in the URL |
 | `/events/[slug]` | Event detail with a sticky panel that adapts to the event type |
 | `/bookings` | Booking hub — what you can book and what is open |
+| `/private-events` | How invitation-only events work |
+| `/i/[token]` | **Private invitation microsite** — reachable only with a valid token |
 | `/venues` | Venues by city |
 | `/account` | Overview, tickets, bookings, resale listings, profile |
 | `/help`, `/legal/*` | Help centre and legal summaries |
@@ -47,18 +49,31 @@ npm run build     # production build
 
 Dashboard, Events, Bookings, Guest Lists, Orders, Tickets, Customers,
 Marketing, Check-In, Finance, Payouts, Analytics, Team, Settings — plus the
-event creation wizard and the per-event guest list manager.
+event creation wizard, the per-event guest list manager, and the **private
+invitation studio** at `/organizer/events/[id]/private` (themes, host names,
+story, programme, e-card designer with live preview, bulk invitation links,
+gift registry, broadcasts and RSVP settings).
 
 ### API (`/api/v1`)
 
 `GET /events`, `GET /events/:slug`, `POST /orders`, `POST|GET /bookings`,
 `GET /tickets`, `GET /tickets/:id/credential`, `POST /checkins`,
-`POST /payments/webhooks/mpesa`. Consistent `{ data, meta }` / `{ error }`
+`POST /payments/webhooks/mpesa`, `POST /invites/:token/rsvp`,
+`POST /invites/:token/gifts/:giftId/claim`, and the organizer routes under
+`/organizers/events/:id/` for the private page, invitations and broadcasts. Consistent `{ data, meta }` / `{ error }`
 envelopes, cursor pagination, and idempotency keys on checkout.
 
 ---
 
 ## The ideas that shape the code
+
+**A private event is invisible.** A ruracio, a wedding reception or a chama
+meeting never appears on the homepage, in search, in any listing, or on a
+public event page — `catalog.getBySlug` refuses anything that is not PUBLIC or
+UNLISTED, and the repository only honours `includeNonPublic` for a query already
+scoped to the owning organizer. The invitation token is the only key, it is
+stored as a SHA-256 hash, and each link works for exactly one guest. See
+`tests/private-events.test.ts`.
 
 **A booking is not a ticket.** A ruracio guest bringing four people, a chama
 member attending a monthly meeting and a stadium seat share almost nothing.
@@ -100,9 +115,12 @@ src/
 │   ├── payments/      Provider abstraction + M-Pesa (Daraja) adapter
 │   ├── seed/          Kenyan demo dataset
 │   └── container.ts   Composition root
-├── app/             Next.js App Router — pages and /api/v1 routes
-├── components/      ui/ primitives, layout/, home/, events/, account/, organizer/
-└── middleware.ts    Nonce-based CSP and per-instance rate limiting
+├── app/
+│   ├── (site)/      The Bookit shell — header, footer, all browsable pages
+│   ├── i/[token]/   Private invitation microsites, deliberately outside the shell
+│   └── api/v1/      REST API
+├── components/      ui/, layout/, home/, events/, private/, account/, organizer/
+└── proxy.ts         Nonce-based CSP and per-instance rate limiting
 ```
 
 Services depend on repository *interfaces*, so swapping the in-memory store for
@@ -119,8 +137,9 @@ Full detail in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and
 Next.js 16 (App Router) · React 19 · TypeScript strict · Tailwind CSS v4 ·
 Radix UI primitives · Zod · Prisma (schema) · Vitest.
 
-Type: **Plus Jakarta Sans** for display, **Inter** for interface — both
-self-hosted through `next/font`, so no third-party request and no CSP exception.
+Type: **Plus Jakarta Sans** for display, **Inter** for interface, and
+**Cormorant Garamond** for private invitations — all self-hosted through
+`next/font`, so no third-party request and no CSP exception.
 
 ---
 

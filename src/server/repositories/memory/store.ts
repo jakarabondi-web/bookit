@@ -1,4 +1,11 @@
 import type {
+  Broadcast,
+  GiftClaim,
+  GiftItem,
+  GuestMessage,
+  PrivateEventPage,
+} from "@/domain/private-event";
+import type {
   AuditLog,
   BanquetTable,
   Booking,
@@ -50,6 +57,11 @@ export interface IdempotencyRecord {
  * repositories stay O(1) on the paths that matter.
  */
 export interface MemoryDb {
+  privatePages: Map<string, PrivateEventPage>;
+  gifts: Map<string, GiftItem>;
+  giftClaims: Map<string, GiftClaim>;
+  broadcasts: Map<string, Broadcast>;
+  guestMessages: Map<string, GuestMessage>;
   users: Map<string, User>;
   organizers: Map<string, Organizer>;
   venues: Map<string, Venue>;
@@ -80,6 +92,11 @@ export interface MemoryDb {
 
 export function emptyDb(): MemoryDb {
   return {
+    privatePages: new Map(),
+    gifts: new Map(),
+    giftClaims: new Map(),
+    broadcasts: new Map(),
+    guestMessages: new Map(),
     users: new Map(),
     organizers: new Map(),
     venues: new Map(),

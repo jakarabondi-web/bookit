@@ -1,4 +1,11 @@
 import type {
+  Broadcast,
+  GiftClaim,
+  GiftItem,
+  GuestMessage,
+  PrivateEventPage,
+} from "@/domain/private-event";
+import type {
   AuditLog,
   BanquetTable,
   Booking,
@@ -40,6 +47,7 @@ import type {
  */
 
 export interface Repositories {
+  privateEvents: PrivateEventRepository;
   users: UserRepository;
   organizers: OrganizerRepository;
   venues: VenueRepository;
@@ -73,6 +81,29 @@ export interface UnitOfWork {
    */
   runInTransaction<T>(work: (repos: Repositories) => Promise<T>): Promise<T>;
   repos: Repositories;
+}
+
+/** Microsite content, gift registry, broadcasts and the guest message wall. */
+export interface PrivateEventRepository {
+  findPage(eventId: EventId): Promise<PrivateEventPage | null>;
+  savePage(page: PrivateEventPage): Promise<PrivateEventPage>;
+
+  listGifts(eventId: EventId): Promise<GiftItem[]>;
+  findGift(giftId: string): Promise<GiftItem | null>;
+  saveGift(gift: GiftItem): Promise<GiftItem>;
+  updateGift(giftId: string, patch: Partial<GiftItem>): Promise<GiftItem>;
+
+  listClaims(eventId: EventId): Promise<GiftClaim[]>;
+  createClaim(claim: GiftClaim): Promise<GiftClaim>;
+  /** Claims already made by this invitation, so a guest can see their own. */
+  listClaimsByInvite(inviteId: string): Promise<GiftClaim[]>;
+
+  listBroadcasts(eventId: EventId): Promise<Broadcast[]>;
+  createBroadcast(broadcast: Broadcast): Promise<Broadcast>;
+
+  listMessages(eventId: EventId): Promise<GuestMessage[]>;
+  createMessage(message: GuestMessage): Promise<GuestMessage>;
+  updateMessage(id: string, patch: Partial<GuestMessage>): Promise<GuestMessage>;
 }
 
 export interface UserRepository {

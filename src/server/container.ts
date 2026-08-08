@@ -17,6 +17,7 @@ import { CredentialService } from "./services/credential-service";
 import { LedgerService } from "./services/ledger-service";
 import { NotificationService } from "./services/notification-service";
 import { PaymentService } from "./services/payment-service";
+import { PrivateEventService } from "./services/private-event-service";
 import { PayoutService } from "./services/payout-service";
 import { RefundService } from "./services/refund-service";
 import { ResaleService } from "./services/resale-service";
@@ -38,6 +39,7 @@ export interface Container {
   payments: PaymentService;
   tickets: TicketService;
   bookings: BookingService;
+  privateEvents: PrivateEventService;
   resale: ResaleService;
   checkin: CheckInService;
   refunds: RefundService;
@@ -105,6 +107,11 @@ export function createContainer(options: { seed?: boolean } = {}): Container {
   paymentsRef = payments;
 
   const bookings = new BookingService(uow, { audit, notifications }, clock);
+  const privateEvents = new PrivateEventService(
+    uow,
+    { bookings, audit, notifications },
+    clock,
+  );
   const resale = new ResaleService(uow, { ledger, risk, audit, notifications }, clock);
   const checkin = new CheckInService(uow, { credentials, audit }, clock);
   const refunds = new RefundService(
@@ -121,6 +128,7 @@ export function createContainer(options: { seed?: boolean } = {}): Container {
     payments,
     tickets,
     bookings,
+    privateEvents,
     resale,
     checkin,
     refunds,
@@ -168,11 +176,21 @@ export function currentActor(): ActorContext {
   };
 }
 
-export function currentOrganizerActor(): ActorContext {
+/**
+ * Organizer actor for the demo.
+ *
+ * `organizerId` can be overridden so a screen can act for whichever organizer
+ * owns the event being viewed — the demo dataset has private events under a
+ * family account and ticketed events under a promoter. Real authentication
+ * replaces this whole function; the override is not a permission bypass,
+ * because every service still checks the actor's organizer against the
+ * resource before doing anything.
+ */
+export function currentOrganizerActor(organizerId?: string): ActorContext {
   return {
     userId: "usr_amina",
     roles: ["ORGANIZER_OWNER", "EVENT_MANAGER", "FINANCE"],
-    organizerId: DEMO_ORGANIZER_ID,
+    organizerId: organizerId ?? DEMO_ORGANIZER_ID,
     ip: null,
     sessionId: "demo-organizer-session",
     mfaSatisfied: true,

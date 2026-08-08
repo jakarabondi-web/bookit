@@ -1,4 +1,4 @@
-import { EventType, TicketStatus } from "@/domain/enums";
+import { EventType, EventVisibility, TicketStatus } from "@/domain/enums";
 import { notFound } from "@/domain/errors";
 import { money, type Money } from "@/domain/money";
 import type {
@@ -81,9 +81,22 @@ export class CatalogService {
     return { items: await this.summariseMany(items), nextCursor };
   }
 
+  /**
+   * Public event detail.
+   *
+   * Only PUBLIC and UNLISTED events are reachable by slug. An invitation-only
+   * event has no public page at all — it lives at `/i/[token]` and is resolved
+   * from the invitation, so guessing a slug reveals nothing.
+   */
   async getBySlug(slug: string): Promise<EventDetail | null> {
     const event = await this.uow.repos.events.findBySlug(slug);
     if (!event) return null;
+    if (
+      event.visibility !== EventVisibility.PUBLIC &&
+      event.visibility !== EventVisibility.UNLISTED
+    ) {
+      return null;
+    }
     const summary = await this.summarise(event);
     const [occurrences, listings, tables] = await Promise.all([
       this.uow.repos.events.listOccurrences(event.id),
@@ -145,15 +158,22 @@ export class CatalogService {
     return this.summariseMany(items);
   }
 
-  async privateAndSocial(limit = 8): Promise<EventSummary[]> {
+  /**
+   * Social and bookable events for the homepage.
+   *
+   * Deliberately does NOT set `includeNonPublic`. A ruracio, a wedding
+   * reception or a family gathering is nobody else's business, and a private
+   * event must never appear on a discovery surface — the repository enforces
+   * that too, but the call site should be obviously correct on its own.
+   */
+  async socialAndBookable(limit = 8): Promise<EventSummary[]> {
     const { items } = await this.uow.repos.events.query({
       types: [
-        EventType.PRIVATE_INVITATION,
         EventType.BANQUET,
         EventType.RECURRING_MEETING,
         EventType.BOOKING,
+        EventType.PRIVATE_INVITATION,
       ],
-      includeNonPublic: true,
       limit,
     });
     return this.summariseMany(items);

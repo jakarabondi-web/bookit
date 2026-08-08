@@ -39,6 +39,7 @@ import type {
 } from "@/domain/types";
 import { addDays, addHours } from "../lib/clock";
 import { ACCOUNT } from "../services/ledger-service";
+import { seedPrivateEvents } from "./private-seed";
 import type { MemoryDb } from "../repositories/memory/store";
 
 /**
@@ -1154,6 +1155,7 @@ export function seedDatabase(db: MemoryDb): void {
   seedConsumerHistory(db);
   seedContributions(db);
   seedLedger(db);
+  seedPrivateEvents(db);
 }
 
 /**

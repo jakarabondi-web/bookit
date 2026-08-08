@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft, ExternalLink } from "lucide-react";
+import { ChevronLeft, ExternalLink, Lock } from "lucide-react";
 import { behaviourFor, EVENT_TYPE_LABEL } from "@/domain/event-type-policy";
 import { getContainer } from "@/server/container";
 import { MetricCard } from "@/components/organizer/metric-card";
@@ -40,6 +40,8 @@ export default async function OrganizerEventPage({
   ]);
 
   const behaviour = behaviourFor(event.type);
+  // A private event has no public page — it is reached only by invitation.
+  const isPrivate = event.visibility !== "PUBLIC" && event.visibility !== "UNLISTED";
   const tickets = await container.uow.repos.tickets.listByEvent(event.id);
   const orders = await container.uow.repos.orders.listByEvent(event.id);
 
@@ -109,12 +111,21 @@ export default async function OrganizerEventPage({
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" asChild>
-              <Link href={`/events/${event.slug}`}>
-                View public page
-                <ExternalLink className="size-4" />
-              </Link>
-            </Button>
+            {isPrivate ? (
+              <Button variant="secondary" asChild>
+                <Link href={`/organizer/events/${event.id}/private`}>
+                  <Lock className="size-4" />
+                  Invitation page
+                </Link>
+              </Button>
+            ) : (
+              <Button variant="secondary" asChild>
+                <Link href={`/events/${event.slug}`}>
+                  View public page
+                  <ExternalLink className="size-4" />
+                </Link>
+              </Button>
+            )}
             <Button asChild>
               <Link href={`/organizer/events/${event.id}/guests`}>Guest list</Link>
             </Button>

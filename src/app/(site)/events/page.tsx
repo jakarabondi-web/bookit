@@ -54,7 +54,6 @@ function buildQuery(params: SearchParams): EventQuery {
       EventType.RECURRING_MEETING,
       EventType.PRIVATE_INVITATION,
     ];
-    query.includeNonPublic = true;
   }
 
   return query;

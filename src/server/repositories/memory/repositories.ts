@@ -27,6 +27,13 @@ import type {
   User,
   Venue,
 } from "@/domain/types";
+import type {
+  Broadcast,
+  GiftClaim,
+  GiftItem,
+  GuestMessage,
+  PrivateEventPage,
+} from "@/domain/private-event";
 import type { MemoryDb } from "./store";
 import type * as R from "../types";
 
@@ -52,6 +59,72 @@ function byStartAsc(a: { startsAt: string }, b: { startsAt: string }): number {
 }
 
 export function createMemoryRepositories(db: MemoryDb): R.Repositories {
+  const privateEvents: R.PrivateEventRepository = {
+    async findPage(eventId) {
+      return db.privatePages.get(eventId) ?? null;
+    },
+    async savePage(page: PrivateEventPage) {
+      db.privatePages.set(page.eventId, page);
+      return page;
+    },
+
+    async listGifts(eventId) {
+      return [...db.gifts.values()]
+        .filter((gift) => gift.eventId === eventId)
+        .sort((a, b) => a.sortOrder - b.sortOrder);
+    },
+    async findGift(giftId) {
+      return db.gifts.get(giftId) ?? null;
+    },
+    async saveGift(gift: GiftItem) {
+      db.gifts.set(gift.id, gift);
+      return gift;
+    },
+    async updateGift(giftId, patch) {
+      const next = patched(requireEntity(db.gifts.get(giftId), "GiftItem", giftId), patch);
+      db.gifts.set(giftId, next);
+      return next;
+    },
+
+    async listClaims(eventId) {
+      return [...db.giftClaims.values()]
+        .filter((claim) => claim.eventId === eventId)
+        .sort((a, b) => b.claimedAt.localeCompare(a.claimedAt));
+    },
+    async createClaim(claim: GiftClaim) {
+      db.giftClaims.set(claim.id, claim);
+      return claim;
+    },
+    async listClaimsByInvite(inviteId) {
+      return [...db.giftClaims.values()].filter((claim) => claim.inviteId === inviteId);
+    },
+
+    async listBroadcasts(eventId) {
+      return [...db.broadcasts.values()]
+        .filter((broadcast) => broadcast.eventId === eventId)
+        .sort((a, b) => b.sentAt.localeCompare(a.sentAt));
+    },
+    async createBroadcast(broadcast: Broadcast) {
+      db.broadcasts.set(broadcast.id, broadcast);
+      return broadcast;
+    },
+
+    async listMessages(eventId) {
+      return [...db.guestMessages.values()]
+        .filter((message) => message.eventId === eventId)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    },
+    async createMessage(message: GuestMessage) {
+      db.guestMessages.set(message.id, message);
+      return message;
+    },
+    async updateMessage(id, patch) {
+      const next = patched(requireEntity(db.guestMessages.get(id), "GuestMessage", id), patch);
+      db.guestMessages.set(id, next);
+      return next;
+    },
+  };
+
   const users: R.UserRepository = {
     async findById(id) {
       return db.users.get(id) ?? null;
@@ -146,8 +219,14 @@ export function createMemoryRepositories(db: MemoryDb): R.Repositories {
 
       const searchTerm = search?.trim().toLowerCase();
 
+      // Defence in depth: `includeNonPublic` is only honoured for a query that
+      // is already scoped to one organizer. A discovery surface therefore
+      // cannot surface a private event even if a caller sets the flag by
+      // mistake — the only way to see one is to own it.
+      const mayIncludeNonPublic = includeNonPublic && Boolean(organizerId);
+
       let items = [...db.events.values()].filter((event) => {
-        if (!includeNonPublic && event.visibility !== "PUBLIC") return false;
+        if (!mayIncludeNonPublic && event.visibility !== "PUBLIC") return false;
         if (organizerId && event.organizerId !== organizerId) return false;
         if (featuredOnly && !event.featured) return false;
         if (category && event.category !== category) return false;
@@ -771,6 +850,7 @@ export function createMemoryRepositories(db: MemoryDb): R.Repositories {
   };
 
   return {
+    privateEvents,
     users,
     organizers,
     venues,

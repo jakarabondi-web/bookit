@@ -56,7 +56,6 @@ export default async function BookingsPage({
           EventType.RECURRING_MEETING,
           EventType.PRIVATE_INVITATION,
         ],
-    includeNonPublic: true,
     limit: 24,
   });
 

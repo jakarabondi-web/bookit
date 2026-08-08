@@ -8,6 +8,7 @@ import { CategoryStrip } from "@/components/home/category-strip";
 import { CityExplorer } from "@/components/home/city-explorer";
 import { Hero } from "@/components/home/hero";
 import { OrganizerCta } from "@/components/home/organizer-cta";
+import { PrivateEventsShowcase } from "@/components/home/private-events-showcase";
 import { CITIES } from "@/lib/cities";
 
 export default async function HomePage() {
@@ -18,7 +19,7 @@ export default async function HomePage() {
     catalog.featured(5),
     catalog.thisWeekend(5),
     catalog.freeEvents(5),
-    catalog.privateAndSocial(5),
+    catalog.socialAndBookable(5),
     catalog.byCategory(EventCategory.SPORTS, 5),
     catalog.trendingIn("Nairobi", 5),
     catalog.cityCounts([...CITIES]),
@@ -56,11 +57,11 @@ export default async function HomePage() {
         </Section>
 
         <Section
-          title="Private & Social Events"
-          description="Ruracio ceremonies, chama meetings, receptions, family gatherings and corporate dinners."
+          title="Open for Booking"
+          description="Reservations, banquets and recurring meetings currently taking guests."
           viewAllHref="/bookings"
         >
-          <EventRail events={social} />
+          <EventRail events={social} emptyMessage="Nothing open for booking right now." />
         </Section>
 
         <Section title="Sports" viewAllHref={`/events?category=${EventCategory.SPORTS}`}>
@@ -76,6 +77,7 @@ export default async function HomePage() {
         </Section>
       </div>
 
+      <PrivateEventsShowcase />
       <OrganizerCta />
     </>
   );

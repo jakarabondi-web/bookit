@@ -202,7 +202,27 @@ PostgreSQL, UPDATE and DELETE are revoked at the database role level.
 
 ---
 
-## 10. Offline scanning — and its honest limit
+## 10. Private events
+
+A private event is not a hidden listing — it has no public surface at all.
+
+| Control | Implementation |
+| --- | --- |
+| Not discoverable | `EventRepository.query` only honours `includeNonPublic` when the query is already scoped to one `organizerId`. A discovery surface therefore cannot widen its own visibility, even by mistake. |
+| No public page | `CatalogService.getBySlug` returns `null` for anything that is not PUBLIC or UNLISTED, so guessing a slug reveals nothing — not even that the event exists. |
+| Token is the only key | The microsite at `/i/[token]` resolves the event *from* the invitation. No route takes an event id from an untrusted caller. |
+| Tokens stored hashed | Only a SHA-256 hash is persisted. The raw link is returned exactly once, at issue time, and never logged or stored. |
+| One link per guest | Each invitation carries its own guest allowance, expiry and status, and can be revoked individually. |
+| No indexing | The route sets `robots: noindex, nofollow, nocache`. |
+| Guest privacy | Other guests' names and the confirmed count are hidden unless the host explicitly turns them on. Notes left with an RSVP are held unapproved until the host publishes them. |
+| Host authorization | Every studio and broadcast operation checks `actor.organizerId` against the event's owner, and refuses outright if the event is public. |
+| Gift claims are atomic | Claiming decrements the remaining count inside a transaction, so two guests cannot both claim the last item. |
+
+Covered by `tests/private-events.test.ts` (26 tests), including that the event
+is absent from every homepage rail, every search, city counts, and the public
+slug route.
+
+## 11. Offline scanning — and its honest limit
 
 A registered device receives an encrypted, event-scoped validation package with
 expiring credentials, and admits offline against a local consumed-set. Batches
@@ -218,7 +238,7 @@ guarantee that does not exist.
 
 ---
 
-## 11. Not yet implemented
+## 12. Not yet implemented
 
 - **Authentication provider.** Session model, magic links, MFA and step-up are
   designed and modelled; services already enforce authorization against an

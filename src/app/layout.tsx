@@ -1,7 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Plus_Jakarta_Sans } from "next/font/google";
-import { SiteHeader } from "@/components/layout/site-header";
-import { SiteFooter } from "@/components/layout/site-footer";
+import { Cormorant_Garamond, Inter, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 
 /**
@@ -20,6 +18,18 @@ const inter = Inter({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-inter",
+});
+
+/**
+ * Serif for private-event microsites. A ruracio or wedding invitation set in
+ * the same UI sans as the checkout would read as a receipt, not an invitation.
+ */
+const cormorant = Cormorant_Garamond({
+  subsets: ["latin"],
+  display: "swap",
+  weight: ["400", "500", "600", "700"],
+  style: ["normal", "italic"],
+  variable: "--font-cormorant",
 });
 
 const jakarta = Plus_Jakarta_Sans({
@@ -61,21 +71,10 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en-KE" className={`${inter.variable} ${jakarta.variable}`}>
-      <body className="flex min-h-screen flex-col">
-        {/* First tab stop on every page. */}
-        <a
-          href="#main"
-          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-xl focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground"
-        >
-          Skip to main content
-        </a>
-        <SiteHeader />
-        <main id="main" className="flex-1">
-          {children}
-        </main>
-        <SiteFooter />
-      </body>
+    <html lang="en-KE" className={`${inter.variable} ${jakarta.variable} ${cormorant.variable}`}>
+      {/* The site chrome lives in `(site)/layout.tsx`. Private invitation
+          microsites render outside that group with their own theming. */}
+      <body className="flex min-h-screen flex-col">{children}</body>
     </html>
   );
 }
