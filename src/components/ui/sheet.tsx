@@ -22,7 +22,7 @@ export const SheetContent = React.forwardRef<
   }
 >(({ className, children, side = "right", ...props }, ref) => (
   <DialogPrimitive.Portal>
-    <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-ink/40 backdrop-blur-[2px]" />
+    <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/55 backdrop-blur-[2px]" />
     <DialogPrimitive.Content
       ref={ref}
       className={cn(

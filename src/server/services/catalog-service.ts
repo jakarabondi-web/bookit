@@ -135,6 +135,19 @@ export class CatalogService {
     return this.summariseMany(items);
   }
 
+  /**
+   * The next events to start, soonest first — the home page's "tonight" rail.
+   * Time-sorted rather than date-fenced so the rail never renders empty on a
+   * quiet Tuesday.
+   */
+  async startingSoon(limit = 8): Promise<EventSummary[]> {
+    const { items } = await this.uow.repos.events.query({
+      from: new Date().toISOString(),
+      limit,
+    });
+    return this.summariseMany(items);
+  }
+
   async thisWeekend(limit = 8): Promise<EventSummary[]> {
     const now = new Date();
     const day = now.getDay();

@@ -49,7 +49,7 @@ export function HeroSearch() {
         onSubmit={submit}
         role="search"
         aria-label="Search events"
-        className="flex flex-col gap-2 rounded-[20px] border border-white/60 bg-surface p-2 shadow-[0_24px_60px_-16px_rgb(17_24_39_/_0.45)] sm:flex-row sm:items-center sm:gap-1"
+        className="flex flex-col gap-2 rounded-[20px] border border-white/25 bg-surface p-2 shadow-[0_24px_60px_-16px_rgb(0_0_0_/_0.55)] sm:flex-row sm:items-center sm:gap-1"
       >
         <div className="relative flex-1">
           <BookitIcon

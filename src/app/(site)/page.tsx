@@ -9,13 +9,15 @@ import { CityExplorer } from "@/components/home/city-explorer";
 import { Hero } from "@/components/home/hero";
 import { OrganizerCta } from "@/components/home/organizer-cta";
 import { PrivateEventsShowcase } from "@/components/home/private-events-showcase";
+import { TonightRail } from "@/components/home/tonight-rail";
 import { CITIES } from "@/lib/cities";
 
 export default async function HomePage() {
   const { catalog } = getContainer();
 
   // One parallel fetch for the whole page — each rail is an independent query.
-  const [popular, weekend, free, social, sports, trending, cityCounts] = await Promise.all([
+  const [soon, popular, weekend, free, social, sports, trending, cityCounts] = await Promise.all([
+    catalog.startingSoon(4),
     catalog.featured(5),
     catalog.thisWeekend(5),
     catalog.freeEvents(5),
@@ -25,9 +27,12 @@ export default async function HomePage() {
     catalog.cityCounts([...CITIES]),
   ]);
 
+  const liveCount = cityCounts.reduce((total, entry) => total + entry.count, 0);
+
   return (
     <>
-      <Hero spotlight={popular} />
+      <Hero liveCount={liveCount} />
+      <TonightRail events={soon} />
       <CategoryStrip />
 
       <div className="page-shell">

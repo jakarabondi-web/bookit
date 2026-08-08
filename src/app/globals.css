@@ -1,48 +1,171 @@
 @import "tailwindcss";
 
 /**
- * Bookit design system — warm light "1B" direction.
+ * Bookit design system — "USIKU" direction, light and dark.
  *
  * Every colour, radius and spacing step used across the app is declared here as
  * a token. Components reference tokens (`bg-surface`, `text-muted`,
  * `rounded-card`) rather than raw hex or arbitrary values, so the whole system
  * can be re-themed from this one block.
+ *
+ * Theming has three states, not two. An explicit choice from the header toggle
+ * stamps `data-theme="light|dark"` on <html> (persisted in localStorage and
+ * restored by an inline script before paint); with no stamp the OS preference
+ * decides. That is why the dark palette is declared twice: once behind
+ * `prefers-color-scheme` guarded against an explicit light choice, and once
+ * for the explicit dark choice.
  */
-@theme {
+:root {
   /* Surfaces */
-  --color-background: #fffdf9;
-  --color-surface: #ffffff;
-  --color-surface-secondary: #fff8f2;
+  --bk-background: #fffdf9;
+  --bk-surface: #ffffff;
+  --bk-surface-secondary: #fff8f2;
 
   /* Brand */
-  --color-primary: #f97316;
-  --color-primary-hover: #ea580c;
-  --color-primary-tint: #fff0e5;
-  --color-primary-foreground: #ffffff;
+  --bk-primary: #f97316;
+  --bk-primary-hover: #ea580c;
+  --bk-primary-tint: #fff0e5;
+  --bk-primary-foreground: #ffffff;
 
   /* Text */
-  --color-ink: #111827;
-  --color-ink-secondary: #4b5563;
-  --color-muted: #6b7280;
+  --bk-ink: #111827;
+  --bk-ink-secondary: #4b5563;
+  --bk-muted: #6b7280;
 
   /* Lines */
-  --color-line: #e5e7eb;
-  --color-line-strong: #d1d5db;
+  --bk-line: #e5e7eb;
+  --bk-line-strong: #d1d5db;
 
   /* Status */
-  --color-success: #16a34a;
-  --color-success-tint: #ecfdf5;
-  --color-error: #dc2626;
-  --color-error-tint: #fef2f2;
-  --color-info: #2563eb;
-  --color-info-tint: #eff6ff;
-  --color-warning: #b45309;
-  --color-warning-tint: #fffbeb;
+  --bk-success: #16a34a;
+  --bk-success-tint: #ecfdf5;
+  --bk-error: #dc2626;
+  --bk-error-tint: #fef2f2;
+  --bk-info: #2563eb;
+  --bk-info-tint: #eff6ff;
+  --bk-warning: #b45309;
+  --bk-warning-tint: #fffbeb;
 
-  /* Typography — Inter for UI, Plus Jakarta Sans for display. */
+  /* Skeleton shimmer midpoint (the light band that sweeps across). */
+  --bk-skeleton-mid: #f3f4f6;
+
+  color-scheme: light;
+}
+
+/*
+ * USIKU after-dark palette. Indigo-black grounds, amber where the light theme
+ * is orange, bone-white ink. Amber flips its foreground to near-black — white
+ * text on #FFA028 fails contrast.
+ */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bk-background: #0a0b14;
+    --bk-surface: #12141f;
+    --bk-surface-secondary: #181b2a;
+
+    --bk-primary: #ffa028;
+    --bk-primary-hover: #ffb44d;
+    --bk-primary-tint: #261a09;
+    --bk-primary-foreground: #1a1000;
+
+    --bk-ink: #f2f1ec;
+    --bk-ink-secondary: #b9b7ae;
+    --bk-muted: #8d8b82;
+
+    --bk-line: #23273a;
+    --bk-line-strong: #303650;
+
+    --bk-success: #3adfa0;
+    --bk-success-tint: #0c261b;
+    --bk-error: #ff6f61;
+    --bk-error-tint: #2e1210;
+    --bk-info: #7ab3ff;
+    --bk-info-tint: #101f36;
+    --bk-warning: #ffc24b;
+    --bk-warning-tint: #2a2009;
+
+    --bk-skeleton-mid: #1e2233;
+
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bk-background: #0a0b14;
+  --bk-surface: #12141f;
+  --bk-surface-secondary: #181b2a;
+
+  --bk-primary: #ffa028;
+  --bk-primary-hover: #ffb44d;
+  --bk-primary-tint: #261a09;
+  --bk-primary-foreground: #1a1000;
+
+  --bk-ink: #f2f1ec;
+  --bk-ink-secondary: #b9b7ae;
+  --bk-muted: #8d8b82;
+
+  --bk-line: #23273a;
+  --bk-line-strong: #303650;
+
+  --bk-success: #3adfa0;
+  --bk-success-tint: #0c261b;
+  --bk-error: #ff6f61;
+  --bk-error-tint: #2e1210;
+  --bk-info: #7ab3ff;
+  --bk-info-tint: #101f36;
+  --bk-warning: #ffc24b;
+  --bk-warning-tint: #2a2009;
+
+  --bk-skeleton-mid: #1e2233;
+
+  color-scheme: dark;
+}
+
+/*
+ * `inline` keeps the var() references in the generated utilities, so
+ * `bg-surface` re-resolves the moment data-theme flips — a plain @theme would
+ * bake the light hex in at build time.
+ */
+@theme inline {
+  /* Surfaces */
+  --color-background: var(--bk-background);
+  --color-surface: var(--bk-surface);
+  --color-surface-secondary: var(--bk-surface-secondary);
+
+  /* Brand */
+  --color-primary: var(--bk-primary);
+  --color-primary-hover: var(--bk-primary-hover);
+  --color-primary-tint: var(--bk-primary-tint);
+  --color-primary-foreground: var(--bk-primary-foreground);
+
+  /* Text */
+  --color-ink: var(--bk-ink);
+  --color-ink-secondary: var(--bk-ink-secondary);
+  --color-muted: var(--bk-muted);
+
+  /* Lines */
+  --color-line: var(--bk-line);
+  --color-line-strong: var(--bk-line-strong);
+
+  /* Status */
+  --color-success: var(--bk-success);
+  --color-success-tint: var(--bk-success-tint);
+  --color-error: var(--bk-error);
+  --color-error-tint: var(--bk-error-tint);
+  --color-info: var(--bk-info);
+  --color-info-tint: var(--bk-info-tint);
+  --color-warning: var(--bk-warning);
+  --color-warning-tint: var(--bk-warning-tint);
+}
+
+@theme {
+  /* Typography — Inter for UI, Plus Jakarta Sans for display, Anton for the
+     USIKU poster voice (hero and rail headlines only). */
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI",
     Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-display: var(--font-jakarta), var(--font-inter), ui-sans-serif, system-ui,
+    sans-serif;
+  --font-poster: var(--font-anton), var(--font-jakarta), ui-sans-serif, system-ui,
     sans-serif;
 
   /* Radii — cards 14–18px, hero ~20px */
@@ -172,7 +295,7 @@
   background: linear-gradient(
     90deg,
     var(--color-line) 25%,
-    #f3f4f6 50%,
+    var(--bk-skeleton-mid) 50%,
     var(--color-line) 75%
   );
   background-size: 200% 100%;

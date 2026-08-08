@@ -5,6 +5,7 @@ import { BookitIcon } from "@/components/ui/bookit-icon";
 import { Logo } from "./logo";
 import { LocationSelector } from "./location-selector";
 import { MobileNav } from "./mobile-nav";
+import { ThemeToggle } from "./theme-toggle";
 
 export const NAV_LINKS = [
   { href: "/events?view=discover", label: "Discover" },
@@ -39,6 +40,7 @@ export function SiteHeader() {
 
         <div className="hidden items-center gap-2 lg:flex">
           <LocationSelector />
+          <ThemeToggle />
           <Link
             href="/account/bookings"
             className="relative rounded-xl p-2.5 text-ink-secondary transition-colors hover:bg-surface-secondary hover:text-ink"
@@ -55,8 +57,9 @@ export function SiteHeader() {
           </Button>
         </div>
 
-        {/* Mobile: logo, search, cart/profile, hamburger. */}
+        {/* Mobile: logo, theme, search, cart/profile, hamburger. */}
         <div className="flex items-center gap-1 lg:hidden">
+          <ThemeToggle />
           <Link
             href="/events"
             className="rounded-xl p-2.5 text-ink-secondary transition-colors hover:bg-surface-secondary"

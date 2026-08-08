@@ -21,8 +21,10 @@ export function CityExplorer({ counts }: { counts: Array<{ city: string; count: 
               sizes="(max-width: 640px) 45vw, 20vw"
               className="object-cover transition-transform duration-300 group-hover:scale-105"
             />
+            {/* Scrim over photography stays literal black: `ink` flips to
+                bone-white in dark mode and would wash the photo out. */}
             <div
-              className="absolute inset-0 bg-gradient-to-t from-ink/80 via-ink/25 to-transparent"
+              className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent"
               aria-hidden="true"
             />
             <div className="absolute inset-x-0 bottom-0 p-4">

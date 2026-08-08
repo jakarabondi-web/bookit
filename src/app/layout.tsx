@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import { Cormorant_Garamond, Inter, Plus_Jakarta_Sans } from "next/font/google";
+import { Anton, Cormorant_Garamond, Inter, Plus_Jakarta_Sans } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 
 /**
@@ -39,6 +40,24 @@ const jakarta = Plus_Jakarta_Sans({
   variable: "--font-jakarta",
 });
 
+/**
+ * Poster face for the USIKU voice — the condensed all-caps headlines on the
+ * home hero and rails. One weight, used loud and sparingly.
+ */
+const anton = Anton({
+  subsets: ["latin"],
+  display: "swap",
+  weight: "400",
+  variable: "--font-anton",
+});
+
+/**
+ * Restores an explicit theme choice before first paint so a dark-mode visitor
+ * never sees a white flash. Runs inline, ahead of hydration; no stored choice
+ * means no stamp, and the OS preference decides via CSS.
+ */
+const THEME_INIT = `try{var t=localStorage.getItem("bookit-theme");if(t==="dark"||t==="light")document.documentElement.dataset.theme=t}catch(e){}`;
+
 export const metadata: Metadata = {
   title: {
     default: "Bookit — Discover events. Book. Attend. Enjoy.",
@@ -64,17 +83,31 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export const viewport: Viewport = {
-  themeColor: "#FFFDF9",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#FFFDF9" },
+    { media: "(prefers-color-scheme: dark)", color: "#0A0B14" },
+  ],
   width: "device-width",
   initialScale: 1,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en-KE" className={`${inter.variable} ${jakarta.variable} ${cormorant.variable}`}>
+    <html
+      lang="en-KE"
+      className={`${inter.variable} ${jakarta.variable} ${cormorant.variable} ${anton.variable}`}
+      suppressHydrationWarning
+    >
       {/* The site chrome lives in `(site)/layout.tsx`. Private invitation
           microsites render outside that group with their own theming. */}
-      <body className="flex min-h-screen flex-col">{children}</body>
+      <body className="flex min-h-screen flex-col">
+        {/* beforeInteractive lands this in the document head of the initial
+            HTML — a plain inline <script> in a streamed body never executes. */}
+        <Script id="bookit-theme-init" strategy="beforeInteractive">
+          {THEME_INIT}
+        </Script>
+        {children}
+      </body>
     </html>
   );
 }
