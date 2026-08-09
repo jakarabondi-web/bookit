@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { EventType } from "@/domain/enums";
+import { DomainError, isDomainError } from "@/domain/errors";
 import { behaviourFor, EVENT_TYPE_BEHAVIOUR } from "@/domain/event-type-policy";
 import { add, allocate, formatMoney, kes, money, percentageOf, subtract } from "@/domain/money";
 import { assertTransition, ORDER_TRANSITIONS, TICKET_TRANSITIONS } from "@/domain/state-machines";
@@ -159,5 +160,34 @@ describe("audit redaction", () => {
   it("returns null for an absent snapshot", () => {
     expect(redact(null)).toBeNull();
     expect(redact(undefined)).toBeNull();
+  });
+});
+
+describe("DomainError identity across module copies", () => {
+  it("recognises an error thrown by a different copy of the errors module", async () => {
+    // The bundler emits `domain/errors` into more than one chunk, so a service
+    // and a route handler can hold different `DomainError` class objects.
+    // `import()` with a cache-busting query gives us a genuinely separate
+    // module instance to stand in for that — `instanceof` fails across it,
+    // which is exactly the bug that turned every rejected domain rule into a
+    // generic 500.
+    // The `.ts` extension keeps Vite's dynamic-import analysis happy; the
+    // query string is what forces a fresh module instance.
+    const other = (await import(
+      /* @vite-ignore */ `@/domain/errors.ts?copy=${Date.now()}`
+    )) as typeof import("@/domain/errors");
+
+    const foreign = new other.DomainError("RESALE_NOT_ALLOWED", "Capped at face value");
+
+    expect(foreign instanceof DomainError).toBe(false);
+    expect(isDomainError(foreign)).toBe(true);
+    expect(foreign.status).toBe(403);
+  });
+
+  it("does not mistake an ordinary error for a domain error", () => {
+    expect(isDomainError(new Error("boom"))).toBe(false);
+    expect(isDomainError({ code: "NOT_FOUND", status: 404 })).toBe(false);
+    expect(isDomainError(null)).toBe(false);
+    expect(isDomainError("NOT_FOUND")).toBe(false);
   });
 });

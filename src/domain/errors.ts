@@ -53,10 +53,28 @@ const STATUS_BY_CODE: Record<ErrorCode, number> = {
   INTERNAL_ERROR: 500,
 };
 
+/**
+ * Marks an object as a DomainError in a way that survives module identity.
+ *
+ * `instanceof` is not reliable here. The bundler emits this module into more
+ * than one chunk — services land in the SSR chunk, route handlers in their
+ * own — so a `DomainError` thrown by a service and caught in a route is an
+ * instance of a *different* class object, and `instanceof` returns false. The
+ * symptom was every rejected domain rule (a resale price over the organizer's
+ * cap, a sold-out tier, a failed risk check) surfacing as a generic 500
+ * "Something went wrong on our side" instead of its real status and message.
+ *
+ * A registered symbol is shared across every copy of the module, so the brand
+ * check works no matter which chunk created the error.
+ */
+const DOMAIN_ERROR_BRAND = Symbol.for("bookit.DomainError");
+
 export class DomainError extends Error {
   readonly code: ErrorCode;
   readonly status: number;
   readonly details?: Record<string, unknown>;
+  /** @internal — see `DOMAIN_ERROR_BRAND`. */
+  readonly [DOMAIN_ERROR_BRAND] = true;
 
   constructor(code: ErrorCode, message: string, details?: Record<string, unknown>) {
     super(message);
@@ -86,5 +104,10 @@ export const conflict = (message: string, details?: Record<string, unknown>) =>
   new DomainError("CONFLICT", message, details);
 
 export function isDomainError(error: unknown): error is DomainError {
-  return error instanceof DomainError;
+  // Brand first — `instanceof` alone misses errors thrown from another chunk.
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    (error as Record<PropertyKey, unknown>)[DOMAIN_ERROR_BRAND] === true
+  );
 }

@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
 import { DEMO_USER_ID, getContainer } from "@/server/container";
+import { CancelListingButton } from "@/components/account/cancel-listing-button";
 import { Badge } from "@/components/ui/badge";
 import { BookitIcon } from "@/components/ui/bookit-icon";
-import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/states";
 import { formatDate, formatPrice } from "@/lib/format";
@@ -76,15 +76,7 @@ export default async function ListingsPage() {
       align: "right",
       render: (row) =>
         row.listing.status === "ACTIVE" ? (
-          <Button
-            size="sm"
-            variant="ghost"
-            disabled
-            title="Not available yet"
-            className="text-error hover:bg-error-tint"
-          >
-            Cancel listing
-          </Button>
+          <CancelListingButton listingId={row.listing.id} />
         ) : (
           <span className="text-xs text-muted">—</span>
         ),

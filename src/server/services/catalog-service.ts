@@ -1,6 +1,6 @@
 import { EventType, EventVisibility, TicketStatus } from "@/domain/enums";
 import { notFound } from "@/domain/errors";
-import { money, type Money } from "@/domain/money";
+import { money, percentageOf, type Money } from "@/domain/money";
 import type {
   Booking,
   Event,
@@ -9,6 +9,7 @@ import type {
   Organizer,
   ResaleListing,
   Ticket,
+  TicketTransfer,
   TicketType,
   Venue,
 } from "@/domain/types";
@@ -237,18 +238,46 @@ export class CatalogService {
 
   /* -------------------------------- Account ------------------------------ */
 
-  async ticketsForUser(userId: string): Promise<
-    Array<{ ticket: Ticket; event: Event; venue: Venue; ticketType: TicketType | null }>
-  > {
+  async ticketsForUser(userId: string): Promise<TicketRow[]> {
     const tickets = await this.uow.repos.tickets.listByOwner(userId);
-    const out = [];
+    const now = new Date().toISOString();
+    const out: TicketRow[] = [];
+
     for (const ticket of tickets) {
       const event = await this.uow.repos.events.findById(ticket.eventId);
       if (!event) continue;
       const venue = await this.uow.repos.venues.findById(event.venueId);
       if (!venue) continue;
       const ticketType = await this.uow.repos.ticketTypes.findById(ticket.ticketTypeId);
-      out.push({ ticket, event, venue, ticketType });
+
+      // The UI needs the same limits the services enforce, so it can state
+      // the resale cap up front instead of letting someone type a price that
+      // is going to be rejected.
+      const policy = event.policies;
+      const maxResalePrice = money(
+        ticket.facePrice.amount + percentageOf(ticket.facePrice, policy.resaleMaxMarkupBps).amount,
+        ticket.facePrice.currency,
+      );
+      const resaleOpen =
+        policy.resaleEnabled &&
+        (!policy.resaleOpensAt || now >= policy.resaleOpensAt) &&
+        (!policy.resaleClosesAt || now <= policy.resaleClosesAt);
+
+      const transfers = await this.uow.repos.transfers.listByTicket(ticket.id);
+      const pendingTransfer =
+        transfers.find((transfer) => transfer.status === "PENDING") ?? null;
+      const activeListing = await this.uow.repos.listings.findActiveByTicket(ticket.id);
+
+      out.push({
+        ticket,
+        event,
+        venue,
+        ticketType,
+        pendingTransfer,
+        activeListing,
+        maxResalePrice,
+        resaleOpen,
+      });
     }
     return out.sort((a, b) => a.event.startsAt.localeCompare(b.event.startsAt));
   }
@@ -647,6 +676,25 @@ export interface OrganizerOverview {
   ticketsPrev7d: number;
   /** Gross revenue per day, oldest first. */
   revenueByDay: number[];
+}
+
+/**
+ * A ticket in the account area, with the transfer/resale context the UI needs
+ * to show honest controls: the resale price ceiling, whether the resale window
+ * is open, and any in-flight transfer or listing that blocks a new one.
+ */
+export interface TicketRow {
+  ticket: Ticket;
+  event: Event;
+  venue: Venue;
+  ticketType: TicketType | null;
+  /** Set while a transfer is awaiting the recipient — the ticket is suspended. */
+  pendingTransfer: TicketTransfer | null;
+  activeListing: ResaleListing | null;
+  /** Face value plus the organizer's markup cap. */
+  maxResalePrice: Money;
+  /** False when resale is disabled, or outside the organizer's window. */
+  resaleOpen: boolean;
 }
 
 export interface DailyPoint {

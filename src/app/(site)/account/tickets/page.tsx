@@ -22,7 +22,13 @@ export default async function TicketsPage() {
       ticket.status === TicketStatus.CONSUMED ||
       ticket.status === TicketStatus.CHECKED_IN,
   );
-  const transferred = rows.filter(({ ticket }) => ticket.status === TicketStatus.TRANSFERRED);
+  // A pending transfer suspends the ticket, so SUSPENDED belongs here too —
+  // otherwise a ticket mid-transfer matches no tab, disappears from the
+  // account area entirely, and the sender loses the only route to cancelling.
+  const transferred = rows.filter(
+    ({ ticket }) =>
+      ticket.status === TicketStatus.TRANSFERRED || ticket.status === TicketStatus.SUSPENDED,
+  );
   const listed = rows.filter(
     ({ ticket }) => ticket.status === TicketStatus.LISTED || ticket.status === TicketStatus.SOLD,
   );
@@ -32,7 +38,7 @@ export default async function TicketsPage() {
     { id: "past", label: "Past", rows: past, empty: "Tickets you have used will appear here." },
     {
       id: "transferred",
-      label: "Transferred",
+      label: "Transfers",
       rows: transferred,
       empty: "Tickets you send to someone else will appear here.",
     },
@@ -75,6 +81,10 @@ export default async function TicketsPage() {
                       event={row.event}
                       venue={row.venue}
                       ticketType={row.ticketType}
+                      pendingTransfer={row.pendingTransfer}
+                      activeListing={row.activeListing}
+                      maxResalePrice={row.maxResalePrice}
+                      resaleOpen={row.resaleOpen}
                     />
                   </li>
                 ))}
