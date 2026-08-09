@@ -4,8 +4,8 @@ import { formatMoney } from "@/domain/money";
 import type { Payout } from "@/domain/types";
 import { DEMO_ORGANIZER_ID, getContainer } from "@/server/container";
 import { MetricCard } from "@/components/organizer/metric-card";
+import { WithdrawPayoutDialog } from "@/components/organizer/withdraw-payout-dialog";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/states";
@@ -42,12 +42,16 @@ const CONTROLS = [
 ];
 
 export default async function PayoutsPage() {
-  const { payouts } = getContainer();
+  const { payouts, uow } = getContainer();
 
-  const [balance, history] = await Promise.all([
+  const [balance, history, organizer] = await Promise.all([
     payouts.balanceFor(DEMO_ORGANIZER_ID),
     payouts.listForOrganizer(DEMO_ORGANIZER_ID),
+    uow.repos.organizers.findById(DEMO_ORGANIZER_ID),
   ]);
+  const destinationMasked = organizer
+    ? `M-PESA •••• ${organizer.supportPhone.slice(-4)}`
+    : "your account on file";
 
   const columns: Column<Payout>[] = [
     {
@@ -121,14 +125,7 @@ export default async function PayoutsPage() {
               approved.
             </p>
           </div>
-          {/* `PayoutService.requestPayout` exists but has no route or UI
-              yet, so this stays disabled rather than looking live and doing
-              nothing with real money. */}
-          <Button size="lg" disabled title="Not available yet">
-            {balance.available.amount === 0
-              ? "Nothing available yet"
-              : `Withdraw ${formatMoney(balance.available)}`}
-          </Button>
+          <WithdrawPayoutDialog available={balance.available} destinationMasked={destinationMasked} />
         </CardContent>
       </Card>
 

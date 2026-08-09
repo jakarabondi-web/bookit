@@ -120,6 +120,107 @@ describe("bookings and RSVPs", () => {
   });
 });
 
+describe("cancelling a booking", () => {
+  it("lets the guest who made the booking cancel it themselves", async () => {
+    const container = freshContainer();
+    const event = await seedCapacityEvent(container, { capacity: 10 });
+
+    const booking = await container.bookings.createBooking(actor({ userId: "usr_guest" }), {
+      eventId: event.id,
+      primaryGuestName: "Wanjiru Kariuki",
+      email: "wanjiru@example.co.ke",
+      guestCount: 1,
+    });
+
+    const cancelled = await container.bookings.cancelBooking(
+      actor({ userId: "usr_guest" }),
+      booking.id,
+      "Change of plans",
+    );
+
+    expect(cancelled.status).toBe(BookingStatus.CANCELLED);
+  });
+
+  it("refuses to let a stranger cancel someone else's booking", async () => {
+    const container = freshContainer();
+    const event = await seedCapacityEvent(container, { capacity: 10 });
+
+    const booking = await container.bookings.createBooking(actor({ userId: "usr_guest" }), {
+      eventId: event.id,
+      primaryGuestName: "Wanjiru Kariuki",
+      email: "wanjiru@example.co.ke",
+      guestCount: 1,
+    });
+
+    await expect(
+      container.bookings.cancelBooking(actor({ userId: "usr_stranger" }), booking.id),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+
+    const unchanged = await container.uow.repos.bookings.findById(booking.id);
+    expect(unchanged?.status).toBe(BookingStatus.CONFIRMED);
+  });
+
+  it("lets organizer staff cancel a booking on a guest's behalf", async () => {
+    const container = freshContainer();
+    const event = await seedCapacityEvent(container, { capacity: 10 });
+
+    const booking = await container.bookings.createBooking(actor({ userId: "usr_guest" }), {
+      eventId: event.id,
+      primaryGuestName: "Wanjiru Kariuki",
+      email: "wanjiru@example.co.ke",
+      guestCount: 1,
+    });
+
+    const cancelled = await container.bookings.cancelBooking(
+      actor({ userId: "usr_staff", organizerId: "org_test" }),
+      booking.id,
+    );
+
+    expect(cancelled.status).toBe(BookingStatus.CANCELLED);
+  });
+
+  it("refuses to cancel a booking that is already cancelled", async () => {
+    const container = freshContainer();
+    const event = await seedCapacityEvent(container, { capacity: 10 });
+
+    const booking = await container.bookings.createBooking(actor({ userId: "usr_guest" }), {
+      eventId: event.id,
+      primaryGuestName: "Wanjiru Kariuki",
+      email: "wanjiru@example.co.ke",
+      guestCount: 1,
+    });
+    await container.bookings.cancelBooking(actor({ userId: "usr_guest" }), booking.id);
+
+    await expect(
+      container.bookings.cancelBooking(actor({ userId: "usr_guest" }), booking.id),
+    ).rejects.toThrow();
+  });
+
+  it("frees the seat for the waitlist when a confirmed guest cancels", async () => {
+    const container = freshContainer();
+    const event = await seedCapacityEvent(container, { capacity: 1 });
+
+    const confirmed = await container.bookings.createBooking(actor({ userId: "usr_first" }), {
+      eventId: event.id,
+      primaryGuestName: "First Guest",
+      email: "first@example.co.ke",
+      guestCount: 1,
+    });
+    const waitlisted = await container.bookings.createBooking(actor({ userId: "usr_second" }), {
+      eventId: event.id,
+      primaryGuestName: "Second Guest",
+      email: "second@example.co.ke",
+      guestCount: 1,
+    });
+    expect(waitlisted.status).toBe(BookingStatus.WAITLISTED);
+
+    await container.bookings.cancelBooking(actor({ userId: "usr_first" }), confirmed.id);
+
+    const promoted = await container.uow.repos.bookings.findById(waitlisted.id);
+    expect(promoted?.status).toBe(BookingStatus.CONFIRMED);
+  });
+});
+
 describe("private invitations", () => {
   async function inviteFixture() {
     const container = freshContainer();

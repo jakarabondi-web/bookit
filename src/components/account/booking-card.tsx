@@ -3,6 +3,7 @@ import Link from "next/link";
 import { CalendarDays, MapPin, Users } from "lucide-react";
 import { BookingStatus, EventVisibility } from "@/domain/enums";
 import type { Booking, Event, Venue } from "@/domain/types";
+import { CancelBookingButton } from "@/components/account/cancel-booking-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDateTime, pluralise } from "@/lib/format";
@@ -140,15 +141,7 @@ export function BookingCard({
               <Button size="sm" variant="ghost" disabled title={NOT_YET}>
                 Contact Organizer
               </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                disabled
-                title={NOT_YET}
-                className="text-error hover:bg-error-tint"
-              >
-                Cancel Booking
-              </Button>
+              <CancelBookingButton bookingId={booking.id} eventTitle={event.title} />
             </>
           ) : null}
         </div>

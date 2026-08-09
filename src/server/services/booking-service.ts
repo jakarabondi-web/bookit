@@ -226,6 +226,62 @@ export class BookingService {
     });
   }
 
+  /**
+   * Lets the guest who made a booking withdraw it themselves — the same
+   * transition organizer staff can drive from the guest list, but reachable
+   * from the account area and gated on ownership rather than staff access.
+   */
+  async cancelBooking(actor: ActorContext, bookingId: string, reason?: string): Promise<Booking> {
+    return this.uow.runInTransaction(async (repos) => {
+      const booking = await repos.bookings.findById(bookingId);
+      if (!booking) throw notFound("Booking", bookingId);
+
+      const isOwner = booking.primaryGuestUserId === actor.userId;
+      const isOrganizerStaff = actor.organizerId !== null;
+      if (!isOwner && !isOrganizerStaff) {
+        throw forbidden("You cannot cancel this booking");
+      }
+      // `assertTransition` treats a same-state request as a no-op rather than
+      // an error, which would make cancelling an already-cancelled booking
+      // silently "succeed" a second time — worth a clear message instead.
+      if (booking.status === BookingStatus.CANCELLED) {
+        throw new DomainError("INVALID_STATE", "This booking is already cancelled");
+      }
+
+      assertTransition(BOOKING_TRANSITIONS, booking.status, BookingStatus.CANCELLED, "Booking");
+
+      const updated = await repos.bookings.update(bookingId, {
+        status: BookingStatus.CANCELLED,
+        updatedAt: this.clock.nowIso(),
+      });
+
+      await this.promoteFromWaitlist(actor, booking.eventId, booking.occurrenceId);
+
+      const recipient = booking.email ?? booking.phone;
+      if (recipient) {
+        const event = await repos.events.findById(booking.eventId);
+        await this.deps.notifications.send({
+          userId: booking.primaryGuestUserId,
+          to: recipient,
+          channel: booking.email ? "EMAIL" : "SMS",
+          template: "booking.cancelled",
+          payload: { reference: booking.reference, eventTitle: event?.title ?? "" },
+        });
+      }
+
+      await this.deps.audit.record(actor, {
+        action: "booking.cancelled",
+        resourceType: "Booking",
+        resourceId: bookingId,
+        before: { status: booking.status },
+        after: { status: BookingStatus.CANCELLED },
+        reason: reason ?? null,
+      });
+
+      return updated;
+    });
+  }
+
   async updateGuests(
     actor: ActorContext,
     bookingId: string,
