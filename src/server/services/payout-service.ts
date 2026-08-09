@@ -66,10 +66,14 @@ export class PayoutService {
 
     // Anything not already reserved is capped by the tier's pre-event release.
     const cap = percentageOf(payable, releaseBps);
-    const available = money(
-      Math.max(0, Math.min(payable.amount - reserved.amount, cap.amount)),
-      payable.currency,
-    );
+    const drawable = Math.max(0, Math.min(payable.amount - reserved.amount, cap.amount));
+
+    // A payout only debits the ledger once `markPaid` runs, so a request that
+    // is merely PENDING/UNDER_REVIEW/APPROVED/PROCESSING would otherwise still
+    // look fully available — letting the same money be requested twice before
+    // the first request is ever paid out.
+    const outstanding = await this.outstandingPayoutTotal(organizerId);
+    const available = money(Math.max(0, drawable - outstanding.amount), payable.currency);
 
     return {
       payable,
@@ -78,6 +82,20 @@ export class PayoutService {
       trustTier: organizer.trustTier,
       releasePolicy: `${releaseBps / 100}% of ticket revenue is available before the event; the remainder is released ${DISPUTE_WINDOW_HOURS[organizer.trustTier]} hours after it ends.`,
     };
+  }
+
+  /** Sum of payouts already requested but not yet paid, failed or reversed. */
+  private async outstandingPayoutTotal(organizerId: string): Promise<Money> {
+    const outstandingStatuses: PayoutStatus[] = [
+      PayoutStatus.PENDING,
+      PayoutStatus.UNDER_REVIEW,
+      PayoutStatus.APPROVED,
+      PayoutStatus.PROCESSING,
+    ];
+    const history = await this.uow.repos.payouts.listByOrganizer(organizerId);
+    return history
+      .filter((payout) => outstandingStatuses.includes(payout.status))
+      .reduce((total, payout) => money(total.amount + payout.amount.amount, total.currency), money(0));
   }
 
   async requestPayout(

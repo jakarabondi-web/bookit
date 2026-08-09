@@ -177,6 +177,56 @@ describe("payouts", () => {
     expect(approved.status).toBe(PayoutStatus.APPROVED);
   });
 
+  it("subtracts payouts already requested from the available balance", async () => {
+    const { container, event } = await organizerFixture();
+    const before = await container.payouts.balanceFor(event.organizerId);
+
+    const payout = await container.payouts.requestPayout(
+      actor({ organizerId: event.organizerId, mfaSatisfied: true }),
+      { organizerId: event.organizerId, amount: kes(100), destinationMasked: "2547****5678" },
+    );
+    expect(payout.status).toBe(PayoutStatus.PENDING);
+
+    const after = await container.payouts.balanceFor(event.organizerId);
+    expect(after.available.amount).toBe(before.available.amount - kes(100).amount);
+
+    // The same balance is what the next request is checked against, so it
+    // cannot be drawn down twice before the first request is ever paid.
+    await expect(
+      container.payouts.requestPayout(
+        actor({ organizerId: event.organizerId, mfaSatisfied: true }),
+        {
+          organizerId: event.organizerId,
+          amount: before.available,
+          destinationMasked: "2547****5678",
+        },
+      ),
+    ).rejects.toMatchObject({ code: "INVALID_STATE" });
+  });
+
+  it("restores the available balance once a payout is paid, via the ledger", async () => {
+    const { container, event } = await organizerFixture();
+    const before = await container.payouts.balanceFor(event.organizerId);
+
+    const payout = await container.payouts.requestPayout(
+      actor({ organizerId: event.organizerId, mfaSatisfied: true }),
+      { organizerId: event.organizerId, amount: before.available, destinationMasked: "2547****5678" },
+    );
+    await container.payouts.approvePayout(
+      actor({ userId: "usr_finance", roles: [Role.FINANCE_MANAGER], mfaSatisfied: true }),
+      payout.id,
+      "Verified",
+    );
+    await container.payouts.markPaid(actor({ mfaSatisfied: true }), payout.id);
+
+    const after = await container.payouts.balanceFor(event.organizerId);
+    // The paid amount is now booked out of the ledger rather than merely
+    // "requested", so it no longer counts as outstanding — and the tier's
+    // pre-event cap re-applies to whatever payable is left.
+    expect(after.payable.amount).toBe(before.payable.amount - before.available.amount);
+    expect(after.available.amount).toBe(Math.round(after.payable.amount * 0.2));
+  });
+
   it("caps the pre-event balance a new organizer can draw", async () => {
     const { container, event } = await organizerFixture();
     const balance = await container.payouts.balanceFor(event.organizerId);
