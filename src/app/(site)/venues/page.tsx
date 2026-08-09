@@ -4,7 +4,7 @@ import Link from "next/link";
 import { MapPin, Users } from "lucide-react";
 import { getContainer } from "@/server/container";
 import { venueHeroImage } from "@/server/venue-media";
-import { MapEmbed } from "@/components/common/map-embed";
+import { boxContaining, MapEmbed } from "@/components/common/map-embed";
 import { Badge } from "@/components/ui/badge";
 import { BookitIcon } from "@/components/ui/bookit-icon";
 import { Card, CardContent } from "@/components/ui/card";
@@ -41,6 +41,11 @@ export default async function VenuesPage({
       ).length,
     }))
     .sort((a, b) => b.upcoming - a.upcoming || a.venue.name.localeCompare(b.venue.name));
+
+  const located = rows
+    .filter(({ venue }) => venue.latitude !== null && venue.longitude !== null)
+    .map(({ venue }) => ({ latitude: venue.latitude!, longitude: venue.longitude! }));
+  const mapBox = boxContaining(located);
 
   return (
     <div className="page-shell py-8 lg:py-12">
@@ -85,16 +90,38 @@ export default async function VenuesPage({
         </ul>
       </nav>
 
-      {/* Orientation map for the current filter — Google's own embed, so it
-          loads from their CDN with zero JavaScript of ours. */}
-      <div className="mb-8 overflow-hidden rounded-card border border-line">
-        <MapEmbed
-          className="h-64 sm:h-72"
-          query={cityFilter ? `${cityFilter}, Kenya` : "Kenya"}
-          zoom={cityFilter ? 12 : 6}
-          title={cityFilter ? `Map of ${cityFilter}` : "Map of Kenya"}
-        />
-      </div>
+      {/* Orientation map framed to the venues actually listed below, not to a
+          hardcoded place name — so filtering the list reframes the map. OSM's
+          embed supports one marker, so a single result gets pinned and a
+          multi-venue view shows the area they span. */}
+      {mapBox ? (
+        <div className="mb-8 overflow-hidden rounded-card border border-line">
+          <MapEmbed
+            className="h-64 sm:h-72"
+            bbox={mapBox}
+            marker={located.length === 1 ? located[0] : undefined}
+            title={
+              cityFilter ? `Map of Bookit venues in ${cityFilter}` : "Map of Bookit venues in Kenya"
+            }
+          />
+          {/* A plain link, so there is always a way to a real map even if the
+              embed is blocked by a network or an extension. */}
+          <div className="flex items-center justify-between gap-3 border-t border-line px-4 py-2.5">
+            <p className="text-xs text-muted">
+              {located.length} {located.length === 1 ? "venue" : "venues"} mapped
+              {cityFilter ? ` in ${cityFilter}` : " across Kenya"}
+            </p>
+            <a
+              href={`https://www.openstreetmap.org/?bbox=${mapBox.map((value) => value.toFixed(6)).join(",")}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs font-semibold text-primary hover:underline"
+            >
+              Open larger map ↗
+            </a>
+          </div>
+        </div>
+      ) : null}
 
       {rows.length === 0 ? (
         <EmptyState

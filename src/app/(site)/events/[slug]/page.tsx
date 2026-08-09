@@ -8,7 +8,7 @@ import { EVENT_TYPE_LABEL } from "@/domain/event-type-policy";
 import { getContainer } from "@/server/container";
 import { config } from "@/server/config";
 import { BookingPanel } from "@/components/events/booking-panel";
-import { MapEmbed } from "@/components/common/map-embed";
+import { boxAround, MapEmbed } from "@/components/common/map-embed";
 import { venueGallery } from "@/server/venue-media";
 import { Badge } from "@/components/ui/badge";
 import { BookitIcon } from "@/components/ui/bookit-icon";
@@ -212,8 +212,8 @@ export default async function EventDetailPage({
               {venue.latitude !== null && venue.longitude !== null ? (
                 <MapEmbed
                   className="h-56 sm:h-64"
-                  query={`${venue.latitude},${venue.longitude}`}
-                  zoom={15}
+                  bbox={boxAround({ latitude: venue.latitude, longitude: venue.longitude })}
+                  marker={{ latitude: venue.latitude, longitude: venue.longitude }}
                   title={`Map showing ${venue.name}`}
                 />
               ) : null}

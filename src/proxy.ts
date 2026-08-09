@@ -110,10 +110,10 @@ export default function proxy(request: NextRequest) {
     `img-src 'self' data: blob:`,
     `font-src 'self' data:`,
     `connect-src 'self'`,
-    // The venue map is a Google Maps iframe (see MapEmbed) — without this,
-    // `default-src 'self'` silently blocks it in every browser, on every
-    // network. Scoped to Maps' own embed host, nothing broader.
-    `frame-src https://www.google.com`,
+    // Venue maps are OpenStreetMap embeds (see MapEmbed). Without this,
+    // `default-src 'self'` silently blocks the frame in every browser, on
+    // every network. Scoped to OSM's host, nothing broader.
+    `frame-src https://www.openstreetmap.org`,
     `frame-ancestors 'none'`,
     `form-action 'self'`,
     `base-uri 'self'`,
