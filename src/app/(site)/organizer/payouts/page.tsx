@@ -121,7 +121,10 @@ export default async function PayoutsPage() {
               approved.
             </p>
           </div>
-          <Button size="lg" disabled={balance.available.amount === 0}>
+          {/* `PayoutService.requestPayout` exists but has no route or UI
+              yet, so this stays disabled rather than looking live and doing
+              nothing with real money. */}
+          <Button size="lg" disabled title="Not available yet">
             {balance.available.amount === 0
               ? "Nothing available yet"
               : `Withdraw ${formatMoney(balance.available)}`}

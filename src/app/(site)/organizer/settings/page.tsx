@@ -118,7 +118,7 @@ export default async function OrganizerSettingsPage() {
                     It requires confirming your identity, notifies your existing contacts, and
                     holds payouts for a cooling period.
                   </p>
-                  <Button size="sm" variant="secondary" className="mt-4">
+                  <Button size="sm" variant="secondary" disabled title="Not available yet" className="mt-4">
                     Change settlement account
                   </Button>
                 </div>

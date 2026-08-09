@@ -215,6 +215,7 @@ export function createMemoryRepositories(db: MemoryDb): R.Repositories {
         bookingsOnly,
         featuredOnly,
         organizerId,
+        venueId,
         includeNonPublic = false,
         cursor = null,
         limit = 24,
@@ -231,6 +232,7 @@ export function createMemoryRepositories(db: MemoryDb): R.Repositories {
       let items = [...db.events.values()].filter((event) => {
         if (!mayIncludeNonPublic && event.visibility !== "PUBLIC") return false;
         if (organizerId && event.organizerId !== organizerId) return false;
+        if (venueId && event.venueId !== venueId) return false;
         if (featuredOnly && !event.featured) return false;
         if (category && event.category !== category) return false;
         if (types?.length && !types.includes(event.type)) return false;

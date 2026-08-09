@@ -19,6 +19,14 @@ import {
 } from "@/components/ui/dialog";
 import { formatDateTime, formatPrice } from "@/lib/format";
 
+/**
+ * Shown on controls whose service layer exists but whose flow is unbuilt.
+ * `TicketService.initiateTransfer` and `ResaleService` are both real, but
+ * neither has an API route or UI yet — so these are disabled rather than
+ * live-looking and inert.
+ */
+const NOT_YET = "Not available yet";
+
 const STATUS_TONE: Record<string, "success" | "warning" | "info" | "error" | "neutral"> = {
   ACTIVE: "success",
   LISTED: "info",
@@ -73,7 +81,10 @@ export function TicketCard({ ticket, event, venue, ticketType }: TicketCardProps
           <div>
             <dt className="sr-only">Venue</dt>
             <dd>
-              {venue.name}, {venue.city}
+              <Link href={`/venues/${venue.id}`} className="hover:text-primary">
+                {venue.name}
+              </Link>
+              , {venue.city}
             </dd>
           </div>
           {ticket.seatLabel ? (
@@ -96,19 +107,19 @@ export function TicketCard({ ticket, event, venue, ticketType }: TicketCardProps
             <Link href={`/events/${event.slug}`}>View Event</Link>
           </Button>
           {canAct && event.policies.transferAllowed ? (
-            <Button size="sm" variant="ghost">
+            <Button size="sm" variant="ghost" disabled title={NOT_YET}>
               <ArrowRightLeft className="size-4" />
               Transfer Ticket
             </Button>
           ) : null}
           {canAct && event.policies.resaleEnabled ? (
-            <Button size="sm" variant="ghost">
+            <Button size="sm" variant="ghost" disabled title={NOT_YET}>
               <Tag className="size-4" />
               Sell Ticket
             </Button>
           ) : null}
           {canAct ? (
-            <Button size="sm" variant="ghost">
+            <Button size="sm" variant="ghost" disabled title={NOT_YET}>
               <Wallet className="size-4" />
               Add to Wallet
             </Button>

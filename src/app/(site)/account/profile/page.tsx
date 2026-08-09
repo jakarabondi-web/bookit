@@ -103,7 +103,7 @@ export default async function ProfilePage() {
                       : "Off — required before you can sell high-value tickets."}
                   </p>
                   {!user.mfaEnabled ? (
-                    <Button size="sm" variant="secondary" className="mt-2">
+                    <Button size="sm" variant="secondary" disabled title="Not available yet" className="mt-2">
                       Turn on 2FA
                     </Button>
                   ) : null}
@@ -132,7 +132,7 @@ export default async function ProfilePage() {
                   <p className="text-sm font-medium text-ink">Safari on macOS</p>
                   <p className="text-xs text-muted">Nairobi · 3 days ago</p>
                 </div>
-                <Button size="sm" variant="ghost">
+                <Button size="sm" variant="ghost" disabled title="Not available yet">
                   Sign out
                 </Button>
               </li>

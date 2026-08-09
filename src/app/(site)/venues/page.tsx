@@ -135,11 +135,13 @@ export default async function VenuesPage({
           {rows.map(({ venue, upcoming }) => (
             <li key={venue.id}>
               {/* The whole card is the link — a title-only target is a
-                  fiddly tap on mobile and reads as inert on desktop. */}
+                  fiddly tap on mobile and reads as inert on desktop. It goes
+                  to the venue's own page: linking to a city-filtered event
+                  list made the click look like it had done nothing. */}
               <Link
-                href={`/events?city=${encodeURIComponent(venue.city)}`}
+                href={`/venues/${venue.id}`}
                 className="group block h-full"
-                aria-label={`${venue.name} — events in ${venue.city}`}
+                aria-label={`${venue.name} — venue details and upcoming events`}
               >
               <Card className="h-full overflow-hidden transition-colors group-hover:border-primary/40">
                 <div className="relative aspect-[16/9] bg-surface-secondary">

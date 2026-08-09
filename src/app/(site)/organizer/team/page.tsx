@@ -47,7 +47,7 @@ export default async function TeamPage() {
             Who can do what on {organizer.name}, and with which permissions.
           </p>
         </div>
-        <Button>Invite member</Button>
+        <Button disabled title="Not available yet">Invite member</Button>
       </header>
 
       <section>

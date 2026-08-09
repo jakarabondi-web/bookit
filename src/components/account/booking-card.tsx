@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { CalendarDays, MapPin, Users } from "lucide-react";
-import { BookingStatus } from "@/domain/enums";
+import { BookingStatus, EventVisibility } from "@/domain/enums";
 import type { Booking, Event, Venue } from "@/domain/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,9 @@ const STATUS_TONE: Record<BookingStatus, "success" | "warning" | "info" | "error
   CANCELLED: "error",
   NO_SHOW: "neutral",
 };
+
+/** Shown on controls whose service layer exists but whose flow is unbuilt. */
+const NOT_YET = "Not available yet";
 
 const STATUS_LABEL: Record<BookingStatus, string> = {
   CONFIRMED: "Confirmed",
@@ -48,6 +51,14 @@ export function BookingCard({
     booking.status === BookingStatus.WAITLISTED;
   const isPast = new Date(event.endsAt) < new Date();
 
+  /**
+   * A private event has no public page — `/events/[slug]` 404s it on purpose,
+   * so linking there sent guests of a ruracio or wedding to a dead end. Their
+   * booking is the record they came for, so the title stops being a link and
+   * the venue takes over as the useful destination.
+   */
+  const hasPublicPage = event.visibility === EventVisibility.PUBLIC;
+
   return (
     <article className="flex flex-col gap-4 rounded-card border border-line bg-surface p-4 shadow-card sm:flex-row">
       <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden rounded-card-sm sm:aspect-square sm:w-32">
@@ -64,9 +75,13 @@ export function BookingCard({
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div className="min-w-0">
             <h3 className="text-base font-semibold text-ink">
-              <Link href={`/events/${event.slug}`} className="hover:text-primary">
-                {event.title}
-              </Link>
+              {hasPublicPage ? (
+                <Link href={`/events/${event.slug}`} className="hover:text-primary">
+                  {event.title}
+                </Link>
+              ) : (
+                event.title
+              )}
             </h3>
             <p className="mt-0.5 text-xs text-muted">Reference {booking.reference}</p>
           </div>
@@ -99,25 +114,39 @@ export function BookingCard({
 
         <div className="mt-4 flex flex-wrap gap-2">
           <Button size="sm" variant="secondary" asChild>
-            <Link href={`/events/${event.slug}`}>View Booking</Link>
+            {hasPublicPage ? (
+              <Link href={`/events/${event.slug}`}>View event</Link>
+            ) : (
+              <Link href={`/venues/${venue.id}`}>View venue</Link>
+            )}
           </Button>
           {isActive && !isPast ? (
             <>
-              <Button size="sm" variant="ghost">
+              {/* Not yet built: `BookingService` has the operations but there
+                  is no route or UI for them. Disabled rather than live-looking
+                  and inert — a button that silently does nothing is worse than
+                  one that says it isn't ready. */}
+              <Button size="sm" variant="ghost" disabled title={NOT_YET}>
                 Edit Guests
               </Button>
-              <Button size="sm" variant="ghost">
+              <Button size="sm" variant="ghost" disabled title={NOT_YET}>
                 Update RSVP
               </Button>
               {booking.status === BookingStatus.CONFIRMED ? (
-                <Button size="sm" variant="ghost">
+                <Button size="sm" variant="ghost" disabled title={NOT_YET}>
                   View QR
                 </Button>
               ) : null}
-              <Button size="sm" variant="ghost">
+              <Button size="sm" variant="ghost" disabled title={NOT_YET}>
                 Contact Organizer
               </Button>
-              <Button size="sm" variant="ghost" className="text-error hover:bg-error-tint">
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled
+                title={NOT_YET}
+                className="text-error hover:bg-error-tint"
+              >
                 Cancel Booking
               </Button>
             </>

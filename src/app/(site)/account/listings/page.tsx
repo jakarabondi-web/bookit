@@ -76,7 +76,13 @@ export default async function ListingsPage() {
       align: "right",
       render: (row) =>
         row.listing.status === "ACTIVE" ? (
-          <Button size="sm" variant="ghost" className="text-error hover:bg-error-tint">
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled
+            title="Not available yet"
+            className="text-error hover:bg-error-tint"
+          >
             Cancel listing
           </Button>
         ) : (

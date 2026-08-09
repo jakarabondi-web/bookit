@@ -110,7 +110,9 @@ export default async function EventDetailPage({
               <div>
                 <dt className="text-xs font-medium uppercase tracking-wide text-muted">Where</dt>
                 <dd className="mt-0.5 text-sm font-medium text-ink">
-                  {venue.name}
+                  <Link href={`/venues/${venue.id}`} className="hover:text-primary">
+                    {venue.name}
+                  </Link>
                   <span className="block text-xs font-normal text-muted">
                     {venue.area}, {venue.city}
                   </span>
@@ -219,7 +221,11 @@ export default async function EventDetailPage({
               ) : null}
               <CardContent className="flex flex-wrap items-center justify-between gap-3 p-5">
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-ink">{venue.name}</p>
+                  <p className="text-sm font-semibold text-ink">
+                    <Link href={`/venues/${venue.id}`} className="hover:text-primary">
+                      {venue.name}
+                    </Link>
+                  </p>
                   <p className="mt-0.5 text-sm text-ink-secondary">{venue.addressLine}</p>
                   <p className="mt-1 text-sm text-muted">
                     Capacity {venue.capacity.toLocaleString("en-KE")}

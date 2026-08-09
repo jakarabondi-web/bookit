@@ -148,6 +148,30 @@ export class CatalogService {
     return this.summariseMany(items);
   }
 
+  /**
+   * A venue's public page: the venue itself plus the events it is hosting.
+   * Goes through `events.query`, so an invite-only wedding at this venue can
+   * never surface here — a venue page is a discovery surface.
+   */
+  async venueDetail(
+    venueId: string,
+  ): Promise<{ venue: Venue; upcoming: EventSummary[]; past: EventSummary[] } | null> {
+    const venue = await this.uow.repos.venues.findById(venueId);
+    if (!venue) return null;
+
+    const { items } = await this.uow.repos.events.query({ venueId, limit: 100 });
+    const now = new Date().toISOString();
+    const summaries = await this.summariseMany(items);
+
+    return {
+      venue,
+      upcoming: summaries.filter((entry) => entry.event.endsAt >= now),
+      past: summaries
+        .filter((entry) => entry.event.endsAt < now)
+        .sort((a, b) => b.event.startsAt.localeCompare(a.event.startsAt)),
+    };
+  }
+
   async thisWeekend(limit = 8): Promise<EventSummary[]> {
     const now = new Date();
     const day = now.getDay();

@@ -38,6 +38,7 @@ import type {
   User,
   UserId,
   Venue,
+  VenueId,
 } from "@/domain/types";
 
 /**
@@ -137,6 +138,7 @@ export interface VenueRepository {
 export interface EventQuery {
   search?: string;
   city?: string;
+  venueId?: VenueId;
   category?: string;
   types?: string[];
   /** Restricts to events starting inside the window. */
