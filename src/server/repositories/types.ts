@@ -5,6 +5,7 @@ import type {
   GuestMessage,
   PrivateEventPage,
 } from "@/domain/private-event";
+import type { MediaAsset, MediaId, MediaPurpose } from "@/domain/media";
 import type {
   AffiliateLink,
   AuditLog,
@@ -68,6 +69,7 @@ export interface Repositories {
   ledger: LedgerRepository;
   payouts: PayoutRepository;
   listings: ListingRepository;
+  media: MediaRepository;
   contributions: ContributionRepository;
   checkins: CheckInRepository;
   risk: RiskRepository;
@@ -284,6 +286,15 @@ export interface ListingRepository {
   countActiveBySeller(userId: UserId, eventId: EventId): Promise<number>;
   create(listing: ResaleListing): Promise<ResaleListing>;
   update(id: string, patch: Partial<ResaleListing>): Promise<ResaleListing>;
+}
+
+export interface MediaRepository {
+  findById(id: MediaId): Promise<MediaAsset | null>;
+  /** Used to reuse an asset when the same file is uploaded twice. */
+  findByChecksum(organizerId: OrganizerId, checksum: string): Promise<MediaAsset | null>;
+  listByOrganizer(organizerId: OrganizerId, purpose?: MediaPurpose): Promise<MediaAsset[]>;
+  create(asset: MediaAsset): Promise<MediaAsset>;
+  delete(id: MediaId): Promise<void>;
 }
 
 export interface ContributionRepository {

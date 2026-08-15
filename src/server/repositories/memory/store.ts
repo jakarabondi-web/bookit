@@ -5,6 +5,7 @@ import type {
   GuestMessage,
   PrivateEventPage,
 } from "@/domain/private-event";
+import type { MediaAsset } from "@/domain/media";
 import type {
   AffiliateLink,
   AuditLog,
@@ -84,6 +85,7 @@ export interface MemoryDb {
   ledgerTransactions: Map<string, LedgerTransaction>;
   payouts: Map<string, Payout>;
   listings: Map<string, ResaleListing>;
+  media: Map<string, MediaAsset>;
   contributions: Map<string, Contribution>;
   checkins: Map<string, CheckIn>;
   riskEvents: Map<string, RiskEvent>;
@@ -122,6 +124,7 @@ export function emptyDb(): MemoryDb {
     ledgerTransactions: new Map(),
     payouts: new Map(),
     listings: new Map(),
+    media: new Map(),
     contributions: new Map(),
     checkins: new Map(),
     riskEvents: new Map(),

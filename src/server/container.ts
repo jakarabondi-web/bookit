@@ -2,6 +2,7 @@ import { PaymentMethod } from "@/domain/enums";
 import type { ActorContext } from "@/domain/types";
 import { config } from "./config";
 import { systemClock } from "./lib/clock";
+import { MemoryMediaStorage } from "./media/storage";
 import { MpesaProvider } from "./payments/mpesa-provider";
 import type { PaymentProvider } from "./payments/provider";
 import { createMemoryUnitOfWork } from "./repositories/memory/unit-of-work";
@@ -13,6 +14,7 @@ import { BookingService } from "./services/booking-service";
 import { CatalogService } from "./services/catalog-service";
 import { CrmService } from "./services/crm-service";
 import { MarketingService } from "./services/marketing-service";
+import { MediaService } from "./services/media-service";
 import { PromotionsService } from "./services/promotions-service";
 import { CheckInService } from "./services/checkin-service";
 import { CheckoutService } from "./services/checkout-service";
@@ -51,6 +53,7 @@ export interface Container {
   refunds: RefundService;
   payouts: PayoutService;
   ledger: LedgerService;
+  media: MediaService;
   risk: RiskService;
   audit: AuditService;
   notifications: NotificationService;
@@ -75,6 +78,10 @@ export function createContainer(options: { seed?: boolean } = {}): Container {
   const crm = new CrmService(uow);
   const marketing = new MarketingService(uow, { crm, notifications }, clock);
   const promotions = new PromotionsService(uow, clock);
+
+  // Swapping this for an S3 or R2 adapter is the only change uploads need to
+  // become durable; nothing above the storage port knows where bytes live.
+  const media = new MediaService(uow, new MemoryMediaStorage(), { audit }, clock);
 
   const providers = new Map<PaymentMethod, PaymentProvider>([
     [PaymentMethod.MPESA, new MpesaProvider()],
@@ -146,6 +153,7 @@ export function createContainer(options: { seed?: boolean } = {}): Container {
     refunds,
     payouts,
     ledger,
+    media,
     risk,
     audit,
     notifications,

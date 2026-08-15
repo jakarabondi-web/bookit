@@ -13,6 +13,7 @@ import {
   Trash2,
   Users,
 } from "lucide-react";
+import { MediaPurpose } from "@/domain/media";
 import { formatMoney, money } from "@/domain/money";
 import {
   hostHeadline,
@@ -30,6 +31,7 @@ import { Ecard } from "@/components/private/ecard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { ImageUpload } from "@/components/ui/image-upload";
 import { Field, Input, Textarea } from "@/components/ui/input";
 import {
   Select,
@@ -202,17 +204,14 @@ export function PrivateStudio(props: PrivateStudioProps) {
                 </ul>
 
                 <div className="mt-6 flex flex-col gap-5">
-                  <Field
+                  <ImageUpload
+                    id="cover"
                     label="Cover image"
-                    htmlFor="cover"
+                    purpose={MediaPurpose.EVENT_COVER}
                     hint="Shown full width at the top of the invitation."
-                  >
-                    <Input
-                      value={page.coverImageUrl ?? ""}
-                      onChange={(event) => update("coverImageUrl", event.target.value || null)}
-                      placeholder="/assets/images/event-wedding.jpg"
-                    />
-                  </Field>
+                    value={page.coverImageUrl}
+                    onChange={(url) => update("coverImageUrl", url)}
+                  />
                   <Field label="Hashtag" htmlFor="hashtag">
                     <Input
                       value={page.hashtag ?? ""}
@@ -556,15 +555,14 @@ export function PrivateStudio(props: PrivateStudioProps) {
                   />
                 </Field>
                 {page.ecard.layout === "PHOTO" ? (
-                  <Field label="Photo" htmlFor="ecard-photo">
-                    <Input
-                      value={page.ecard.photoUrl ?? ""}
-                      onChange={(event) =>
-                        update("ecard", { ...page.ecard, photoUrl: event.target.value || null })
-                      }
-                      placeholder="/assets/images/event-wedding.jpg"
-                    />
-                  </Field>
+                  <ImageUpload
+                    id="ecard-photo"
+                    label="Photo"
+                    purpose={MediaPurpose.ECARD_PHOTO}
+                    hint="Sits above the names on the card."
+                    value={page.ecard.photoUrl}
+                    onChange={(url) => update("ecard", { ...page.ecard, photoUrl: url })}
+                  />
                 ) : null}
               </CardContent>
             </Card>

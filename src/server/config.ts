@@ -78,6 +78,15 @@ export const config = Object.freeze({
     resaleFeeBps: int("PLATFORM_RESALE_FEE_BPS", 800),
   },
 
+  media: {
+    /**
+     * Largest upload accepted, before any decoding. A phone photograph is
+     * typically 2–5 MB; 8 MB leaves room for a DSLR export without letting a
+     * caller stream something enormous at the process.
+     */
+    maxUploadBytes: int("MEDIA_MAX_UPLOAD_BYTES", 8 * 1024 * 1024),
+  },
+
   mpesa: {
     environment: (optional("MPESA_ENVIRONMENT") ?? "sandbox") as "sandbox" | "production",
     consumerKey: optional("MPESA_CONSUMER_KEY"),

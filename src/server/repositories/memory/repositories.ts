@@ -1,5 +1,6 @@
 import { InventoryState, TicketStatus } from "@/domain/enums";
 import { notFound } from "@/domain/errors";
+import type { MediaAsset } from "@/domain/media";
 import type {
   AffiliateLink,
   AuditLog,
@@ -726,6 +727,33 @@ export function createMemoryRepositories(db: MemoryDb): R.Repositories {
     },
   };
 
+  const media: R.MediaRepository = {
+    async findById(id) {
+      return db.media.get(id) ?? null;
+    },
+    async findByChecksum(organizerId, checksum) {
+      for (const asset of db.media.values()) {
+        if (asset.organizerId === organizerId && asset.checksum === checksum) return asset;
+      }
+      return null;
+    },
+    async listByOrganizer(organizerId, purpose) {
+      return [...db.media.values()]
+        .filter(
+          (asset) =>
+            asset.organizerId === organizerId && (!purpose || asset.purpose === purpose),
+        )
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    },
+    async create(asset: MediaAsset) {
+      db.media.set(asset.id, asset);
+      return asset;
+    },
+    async delete(id) {
+      db.media.delete(id);
+    },
+  };
+
   const contributions: R.ContributionRepository = {
     async listByEvent(eventId) {
       return [...db.contributions.values()].filter(
@@ -941,6 +969,7 @@ export function createMemoryRepositories(db: MemoryDb): R.Repositories {
     ledger,
     payouts,
     listings,
+    media,
     contributions,
     checkins,
     risk,
