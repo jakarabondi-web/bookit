@@ -1,5 +1,6 @@
 import Image from "next/image";
-import type { EcardDesign, PrivateTheme } from "@/domain/private-event";
+import type { EcardDesign } from "@/domain/private-event";
+import { displayTypeStyle, type ResolvedTheme } from "@/domain/private-design";
 import { formatDate, formatTime } from "@/lib/format";
 
 /**
@@ -12,7 +13,7 @@ import { formatDate, formatTime } from "@/lib/format";
 
 export interface EcardProps {
   design: EcardDesign;
-  theme: PrivateTheme;
+  theme: ResolvedTheme;
   monogram: string;
   hostNames: string;
   startsAt: string;
@@ -108,7 +109,7 @@ export function Ecard({
 
           <p
             style={{
-              fontFamily: theme.displayFont,
+              ...displayTypeStyle(theme.fonts),
               fontSize: "clamp(30px, 7vw, 44px)",
               lineHeight: 1.1,
               margin: 0,

@@ -1,5 +1,16 @@
 import type { Metadata, Viewport } from "next";
-import { Anton, Cormorant_Garamond, Inter, Plus_Jakarta_Sans } from "next/font/google";
+import {
+  Anton,
+  Caveat,
+  Cinzel,
+  Cormorant_Garamond,
+  Fraunces,
+  Inter,
+  Marcellus,
+  Outfit,
+  Playfair_Display,
+  Plus_Jakarta_Sans,
+} from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 
@@ -52,6 +63,67 @@ const anton = Anton({
 });
 
 /**
+ * Display faces a host can choose in the invitation design module.
+ *
+ * All are declared `preload: false`. next/font emits the `@font-face` rules for
+ * every family here, but a browser only fetches a font file once rendered text
+ * actually asks for it — so a visitor buying a concert ticket pays for none of
+ * these, and a guest opening an invitation downloads exactly the one face that
+ * family chose.
+ */
+const marcellus = Marcellus({
+  subsets: ["latin"],
+  display: "swap",
+  preload: false,
+  weight: "400",
+  variable: "--font-marcellus",
+});
+
+const playfair = Playfair_Display({
+  subsets: ["latin"],
+  display: "swap",
+  preload: false,
+  variable: "--font-playfair",
+});
+
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  display: "swap",
+  preload: false,
+  variable: "--font-fraunces",
+});
+
+const cinzel = Cinzel({
+  subsets: ["latin"],
+  display: "swap",
+  preload: false,
+  variable: "--font-cinzel",
+});
+
+const outfit = Outfit({
+  subsets: ["latin"],
+  display: "swap",
+  preload: false,
+  variable: "--font-outfit",
+});
+
+const caveat = Caveat({
+  subsets: ["latin"],
+  display: "swap",
+  preload: false,
+  variable: "--font-caveat",
+});
+
+const ceremonyFontVariables = [
+  marcellus.variable,
+  playfair.variable,
+  fraunces.variable,
+  cinzel.variable,
+  outfit.variable,
+  caveat.variable,
+].join(" ");
+
+/**
  * Restores an explicit theme choice before first paint so a dark-mode visitor
  * never sees a white flash. Runs inline, ahead of hydration; no stored choice
  * means no stamp, and the OS preference decides via CSS.
@@ -95,7 +167,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="en-KE"
-      className={`${inter.variable} ${jakarta.variable} ${cormorant.variable} ${anton.variable}`}
+      className={`${inter.variable} ${jakarta.variable} ${cormorant.variable} ${anton.variable} ${ceremonyFontVariables}`}
       suppressHydrationWarning
     >
       {/* The site chrome lives in `(site)/layout.tsx`. Private invitation

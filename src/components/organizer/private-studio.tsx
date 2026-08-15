@@ -7,19 +7,19 @@ import {
   Link2,
   Mail,
   MessageSquare,
-  Palette,
   Plus,
   Send,
   Trash2,
   Users,
 } from "lucide-react";
 import { MediaPurpose } from "@/domain/media";
+import { templateById } from "@/domain/invitation-templates";
+import { resolveTheme } from "@/domain/private-design";
 import { formatMoney, money } from "@/domain/money";
 import {
+  designOf,
   hostHeadline,
   monogramFor,
-  PRIVATE_THEMES,
-  themeById,
   type Broadcast,
   type EcardLayout,
   type GiftItem,
@@ -28,6 +28,11 @@ import {
 } from "@/domain/private-event";
 import type { PrivateInvite } from "@/domain/types";
 import { Ecard } from "@/components/private/ecard";
+import {
+  InvitationCanvas,
+  type InvitationContent,
+} from "@/components/private/invitation-canvas";
+import { DesignModule } from "@/components/organizer/design-module";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -43,7 +48,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/states";
-import { formatDate, formatDateTime } from "@/lib/format";
+import { formatDate, formatDateTime, formatTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 /**
@@ -84,7 +89,10 @@ export function PrivateStudio(props: PrivateStudioProps) {
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  const theme = themeById(page.themeId);
+  const design = designOf(page);
+  const theme = resolveTheme(design);
+  const template = templateById(design.templateId);
+  const content = invitationContent(page, props);
 
   function update<K extends keyof PrivateEventPage>(key: K, value: PrivateEventPage[K]) {
     setPage((current) => ({ ...current, [key]: value }));
@@ -123,8 +131,8 @@ export function PrivateStudio(props: PrivateStudioProps) {
           <div>
             <p className="text-sm font-semibold text-ink">{hostHeadline(page)}</p>
             <p className="text-xs text-muted">
-              {theme.name} · {props.invites.length} invitations · {opened} opened · {responded}{" "}
-              responded
+              {theme.palette.name} · {theme.fonts.name} · {props.invites.length} invitations ·{" "}
+              {opened} opened · {responded} responded
             </p>
           </div>
         </div>
@@ -156,75 +164,46 @@ export function PrivateStudio(props: PrivateStudioProps) {
 
         {/* ------------------------------ Design ----------------------------- */}
         <TabsContent value="design">
-          <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-            <Card>
-              <CardContent className="p-6">
-                <h2 className="flex items-center gap-2 text-base font-semibold text-ink">
-                  <Palette className="size-4 text-primary" aria-hidden="true" />
-                  Theme
-                </h2>
-                <p className="mt-1 text-sm text-muted">
-                  Sets the colours and typography of the invitation page and the e-card.
-                </p>
-
-                <ul className="mt-5 grid gap-3 sm:grid-cols-2">
-                  {PRIVATE_THEMES.map((option) => {
-                    const active = page.themeId === option.id;
-                    return (
-                      <li key={option.id}>
-                        <button
-                          type="button"
-                          onClick={() => update("themeId", option.id)}
-                          aria-pressed={active}
-                          className={cn(
-                            "w-full rounded-card-sm border p-4 text-left transition-colors",
-                            active ? "border-primary bg-primary-tint/40" : "border-line hover:border-primary/40",
-                          )}
-                        >
-                          <span className="flex items-center gap-2">
-                            {[option.background, option.surface, option.accent].map((swatch) => (
-                              <span
-                                key={swatch}
-                                className="size-5 rounded-full border border-line"
-                                style={{ background: swatch }}
-                                aria-hidden="true"
-                              />
-                            ))}
-                            <span className="ml-auto text-sm font-semibold text-ink">
-                              {option.name}
-                            </span>
-                          </span>
-                          <span className="mt-2 block text-xs leading-relaxed text-muted">
-                            {option.description}
-                          </span>
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-
-                <div className="mt-6 flex flex-col gap-5">
+          <DesignModule
+            design={design}
+            content={content}
+            onChange={(next) => update("design", next)}
+            preview={
+              <div className="flex flex-col gap-4">
+                <div className="overflow-hidden rounded-card-lg border border-line">
+                  <InvitationCanvas
+                    template={template}
+                    theme={theme}
+                    content={content}
+                    scale={0.82}
+                  />
+                </div>
+                <div className="rounded-card border border-line bg-surface p-4">
                   <ImageUpload
                     id="cover"
                     label="Cover image"
                     purpose={MediaPurpose.EVENT_COVER}
-                    hint="Shown full width at the top of the invitation."
+                    hint={
+                      theme.heroLayout.usesCover
+                        ? "Shown at the top of the invitation."
+                        : "Type-only composition — this is kept, but not shown."
+                    }
                     value={page.coverImageUrl}
                     onChange={(url) => update("coverImageUrl", url)}
                   />
-                  <Field label="Hashtag" htmlFor="hashtag">
-                    <Input
-                      value={page.hashtag ?? ""}
-                      onChange={(event) => update("hashtag", event.target.value || null)}
-                      placeholder="#WanjikuMeetsOtieno"
-                    />
-                  </Field>
+                  <div className="mt-4">
+                    <Field label="Hashtag" htmlFor="hashtag">
+                      <Input
+                        value={page.hashtag ?? ""}
+                        onChange={(event) => update("hashtag", event.target.value || null)}
+                        placeholder="#WanjikuMeetsOtieno"
+                      />
+                    </Field>
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
-
-            <ThemePreview page={page} />
-          </div>
+              </div>
+            }
+          />
         </TabsContent>
 
         {/* ------------------------------ Details ---------------------------- */}
@@ -573,7 +552,11 @@ export function PrivateStudio(props: PrivateStudioProps) {
               </p>
               <Ecard
                 design={page.ecard}
-                theme={page.ecard.themeId ? themeById(page.ecard.themeId) : theme}
+                theme={
+                  page.ecard.themeId
+                    ? resolveTheme({ ...design, paletteId: page.ecard.themeId })
+                    : theme
+                }
                 monogram={monogramFor(page)}
                 hostNames={hostHeadline(page)}
                 startsAt={props.startsAt}
@@ -756,67 +739,40 @@ export function PrivateStudio(props: PrivateStudioProps) {
 
 /* -------------------------------------------------------------------------- */
 
-function ThemePreview({ page }: { page: PrivateEventPage }) {
-  const theme = themeById(page.themeId);
-  return (
-    <div className="lg:sticky lg:top-24 lg:h-fit">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted">Preview</p>
-      <div
-        className="overflow-hidden rounded-card-lg border border-line"
-        style={{ background: theme.background }}
-      >
-        <div style={{ padding: "32px 24px", textAlign: "center" }}>
-          <p
-            style={{
-              fontSize: 10,
-              letterSpacing: "0.22em",
-              textTransform: "uppercase",
-              color: theme.inkSoft,
-            }}
-          >
-            {page.eyebrow}
-          </p>
-          <p
-            style={{
-              fontFamily: theme.displayFont,
-              fontSize: 30,
-              lineHeight: 1.1,
-              margin: "12px 0 0",
-              color: theme.ink,
-            }}
-          >
-            {hostHeadline(page)}
-          </p>
-          <div
-            aria-hidden="true"
-            style={{
-              width: 40,
-              height: 1,
-              background: theme.accent,
-              margin: "18px auto",
-            }}
-          />
-          <p style={{ fontSize: 13, color: theme.inkSoft, margin: 0 }}>
-            {page.tagline ?? "Your tagline appears here."}
-          </p>
-          <span
-            style={{
-              display: "inline-block",
-              marginTop: 22,
-              padding: "10px 22px",
-              borderRadius: 9,
-              background: theme.accent,
-              color: theme.surface,
-              fontSize: 13,
-              fontWeight: 600,
-            }}
-          >
-            RSVP
-          </span>
-        </div>
-      </div>
-    </div>
-  );
+/**
+ * The invitation as the guest will meet it.
+ *
+ * Renders the real composition rather than a colour swatch: the chosen ground
+ * and motif, the chosen face at headline size, and the hero layout actually
+ * laid out — so moving any one control shows its true consequence.
+ */
+/** The host's real details, shaped for the invitation renderer. */
+function invitationContent(
+  page: PrivateEventPage,
+  props: PrivateStudioProps,
+): InvitationContent {
+  const starts = new Date(props.startsAt);
+  const parts = new Intl.DateTimeFormat("en-KE", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    timeZone: "Africa/Nairobi",
+  }).formatToParts(starts);
+  const part = (type: string) => parts.find((entry) => entry.type === type)?.value ?? "";
+
+  return {
+    eyebrow: page.eyebrow,
+    names: hostHeadline(page),
+    monogram: monogramFor(page),
+    dateLine: formatDate(props.startsAt),
+    dateDay: part("day"),
+    dateMonth: part("month").toUpperCase(),
+    dateYear: part("year"),
+    timeLine: formatTime(props.startsAt),
+    placeLine: `${props.venueName}, ${props.venueCity}`,
+    note: page.tagline,
+    photoUrl: page.coverImageUrl,
+  };
 }
 
 function InvitationsPanel({

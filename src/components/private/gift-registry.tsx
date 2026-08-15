@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { Check, Gift, Heart } from "lucide-react";
 import { formatMoney, money } from "@/domain/money";
-import type { GiftClaim, GiftItem, PrivateTheme } from "@/domain/private-event";
+import type { GiftClaim, GiftItem } from "@/domain/private-event";
+import type { ResolvedTheme } from "@/domain/private-design";
 
 /**
  * Gift registry.
@@ -16,7 +17,7 @@ import type { GiftClaim, GiftItem, PrivateTheme } from "@/domain/private-event";
 
 export interface GiftRegistryProps {
   token: string;
-  theme: PrivateTheme;
+  theme: ResolvedTheme;
   gifts: GiftItem[];
   myClaims: GiftClaim[];
   note: string | null;

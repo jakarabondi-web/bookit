@@ -373,7 +373,13 @@ export class PrivateEventService {
       action: "private_page.updated",
       resourceType: "Event",
       resourceId: eventId,
-      after: { themeId: saved.themeId, hosts: saved.hosts.length },
+      after: {
+        palette: saved.design?.paletteId ?? saved.themeId,
+        font: saved.design?.fontId ?? null,
+        background: saved.design?.backgroundId ?? null,
+        heroLayout: saved.design?.heroLayout ?? null,
+        hosts: saved.hosts.length,
+      },
     });
 
     return saved;

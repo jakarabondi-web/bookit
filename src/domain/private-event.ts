@@ -1,3 +1,4 @@
+import { designFromLegacyTheme, type PrivateDesign } from "./private-design";
 import type { Money } from "./money";
 import type { BookingId, EventId, InviteId, UserId } from "./types";
 
@@ -305,7 +306,13 @@ export interface RsvpSettings {
 
 export interface PrivateEventPage {
   eventId: EventId;
+  /**
+   * Superseded by `design`, kept so invitations saved before the design module
+   * keep rendering. `designOf` is the only thing that should read it.
+   */
   themeId: string;
+  /** Palette, type, background and hero layout, chosen independently. */
+  design?: PrivateDesign;
   /** Large image at the top of the microsite. */
   coverImageUrl: string | null;
   /** e.g. "Ruracio Ceremony" — shown above the host names. */
@@ -346,6 +353,7 @@ export function defaultPrivatePage(
   return {
     eventId,
     themeId: "gold-ivory",
+    design: { paletteId: "gold-ivory", fontId: "classic", backgroundId: "plain", heroLayout: "OVERLAY" },
     coverImageUrl: null,
     eyebrow: seed.title,
     headline: null,
@@ -404,4 +412,15 @@ export function monogramFor(page: PrivateEventPage): string {
     .filter(Boolean);
   if (initials.length === 0) return "✦";
   return initials.join(" & ");
+}
+
+/**
+ * The page's design, migrating a legacy `themeId` on read.
+ *
+ * Nothing renders from `themeId` directly. A page written before the design
+ * module has its old theme expanded into the four axes here, so it looks
+ * unchanged until its host deliberately moves one of them.
+ */
+export function designOf(page: PrivateEventPage): PrivateDesign {
+  return page.design ?? designFromLegacyTheme(page.themeId);
 }

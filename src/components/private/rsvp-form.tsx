@@ -2,7 +2,8 @@
 
 import { useState, type FormEvent } from "react";
 import { Check, X } from "lucide-react";
-import type { PrivateTheme, RsvpSettings } from "@/domain/private-event";
+import type { RsvpSettings } from "@/domain/private-event";
+import type { ResolvedTheme } from "@/domain/private-design";
 
 /**
  * The guest's RSVP.
@@ -14,7 +15,7 @@ import type { PrivateTheme, RsvpSettings } from "@/domain/private-event";
 
 export interface RsvpFormProps {
   token: string;
-  theme: PrivateTheme;
+  theme: ResolvedTheme;
   settings: RsvpSettings;
   maxGuests: number;
   inviteeName: string;

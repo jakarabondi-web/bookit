@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { CalendarDays, Clock, MapPin, MessageCircle, Phone, Shirt } from "lucide-react";
-import { hostHeadline, monogramFor, themeById } from "@/domain/private-event";
+import { designOf, hostHeadline, monogramFor } from "@/domain/private-event";
+import { displayTypeStyle, resolveTheme } from "@/domain/private-design";
 import { getContainer } from "@/server/container";
 import { Ecard } from "@/components/private/ecard";
 import { GiftRegistry } from "@/components/private/gift-registry";
@@ -38,12 +39,22 @@ export default async function InvitationPage({
   if (!context) notFound();
 
   const { invite, event, venue, page, booking, gifts, myClaims, messages } = context;
-  const theme = themeById(page.themeId);
-  const cardTheme = page.ecard.themeId ? themeById(page.ecard.themeId) : theme;
+  const design = designOf(page);
+  const theme = resolveTheme(design);
+  const cardTheme = page.ecard.themeId
+    ? resolveTheme({ ...design, paletteId: page.ecard.themeId })
+    : theme;
   const headline = hostHeadline(page);
 
+  // The composition the host chose, and whether it can show their photograph.
+  const layout = theme.heroLayout.id;
+  const cover = theme.heroLayout.usesCover ? page.coverImageUrl : null;
+  // Only the full-bleed arrangement puts type over the image, so only it needs
+  // the light-on-dark treatment.
+  const onPhoto = layout === "OVERLAY" && Boolean(cover);
+
   const sectionTitle = {
-    fontFamily: theme.displayFont,
+    ...displayTypeStyle(theme.fonts),
     fontSize: 30,
     margin: "0 0 20px",
     color: theme.ink,
@@ -52,7 +63,7 @@ export default async function InvitationPage({
   return (
     <div
       style={{
-        background: theme.background,
+        background: theme.pageBackground,
         color: theme.ink,
         fontFamily: theme.bodyFont,
         minHeight: "100vh",
@@ -60,10 +71,21 @@ export default async function InvitationPage({
     >
       {/* Cover */}
       <header style={{ position: "relative" }}>
-        {page.coverImageUrl ? (
-          <div style={{ position: "relative", height: "min(66vh, 540px)" }}>
+        {cover ? (
+          <div
+            style={{
+              position: "relative",
+              // OVERLAY runs the photograph tall so the names can sit inside
+              // it; the other arrangements keep it to a band above the type.
+              height: onPhoto ? "min(66vh, 540px)" : "min(42vh, 360px)",
+              margin: layout === "FRAMED" ? "28px clamp(16px, 5vw, 56px) 0" : undefined,
+              borderRadius: layout === "FRAMED" ? 10 : 0,
+              overflow: layout === "FRAMED" ? "hidden" : undefined,
+              border: layout === "FRAMED" ? `1px solid ${theme.accent}55` : undefined,
+            }}
+          >
             <Image
-              src={page.coverImageUrl}
+              src={cover}
               alt=""
               fill
               priority
@@ -72,23 +94,26 @@ export default async function InvitationPage({
             />
             {/* The headline sits over the lower third, so that band is darkened
                 hard — a gradient that fades to the page background would leave
-                white text on cream and unreadable. */}
-            <div
-              aria-hidden="true"
-              style={{
-                position: "absolute",
-                inset: 0,
-                background:
-                  "linear-gradient(to bottom, rgba(12,10,8,0.25) 0%, rgba(12,10,8,0.35) 42%, rgba(12,10,8,0.78) 100%)",
-              }}
-            />
+                white text on cream and unreadable. Only OVERLAY needs it; the
+                other arrangements keep the type off the photograph entirely. */}
+            {onPhoto ? (
+              <div
+                aria-hidden="true"
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  background:
+                    "linear-gradient(to bottom, rgba(12,10,8,0.25) 0%, rgba(12,10,8,0.35) 42%, rgba(12,10,8,0.78) 100%)",
+                }}
+              />
+            ) : null}
           </div>
         ) : null}
 
         <div
           style={{
             maxWidth: 640,
-            margin: page.coverImageUrl ? "-210px auto 0" : "0 auto",
+            margin: onPhoto ? "-210px auto 0" : "28px auto 0",
             padding: "0 20px 48px",
             position: "relative",
             textAlign: "center",
@@ -99,7 +124,7 @@ export default async function InvitationPage({
               fontSize: 11,
               letterSpacing: "0.24em",
               textTransform: "uppercase",
-              color: page.coverImageUrl ? "#FFFFFFD9" : theme.inkSoft,
+              color: onPhoto ? "#FFFFFFD9" : theme.inkSoft,
               marginBottom: 14,
             }}
           >
@@ -107,12 +132,12 @@ export default async function InvitationPage({
           </p>
           <h1
             style={{
-              fontFamily: theme.displayFont,
+              ...displayTypeStyle(theme.fonts),
               fontSize: "clamp(38px, 10vw, 62px)",
               lineHeight: 1.05,
               margin: 0,
-              color: page.coverImageUrl ? "#FFFFFF" : theme.ink,
-              textShadow: page.coverImageUrl ? "0 2px 24px rgba(0,0,0,0.4)" : undefined,
+              color: onPhoto ? "#FFFFFF" : theme.ink,
+              textShadow: onPhoto ? "0 2px 24px rgba(0,0,0,0.4)" : undefined,
             }}
           >
             {headline}
@@ -124,8 +149,8 @@ export default async function InvitationPage({
                 maxWidth: "34em",
                 fontSize: 16,
                 lineHeight: 1.7,
-                color: page.coverImageUrl ? "#FFFFFFE0" : theme.inkSoft,
-                textShadow: page.coverImageUrl ? "0 1px 12px rgba(0,0,0,0.5)" : undefined,
+                color: onPhoto ? "#FFFFFFE0" : theme.inkSoft,
+                textShadow: onPhoto ? "0 1px 12px rgba(0,0,0,0.5)" : undefined,
               }}
             >
               {page.tagline}
