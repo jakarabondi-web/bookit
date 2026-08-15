@@ -3,19 +3,22 @@
 import * as React from "react";
 import { Check, ImageDown, Loader2, Pipette, RotateCcw } from "lucide-react";
 import {
-  BACKGROUNDS,
+  BORDERS,
   CUSTOM_PALETTE_ID,
   FONT_PAIRINGS,
   HERO_LAYOUTS,
+  MOTIFS,
   PALETTES,
   activePalette,
   displayTypeStyle,
   resolveTheme,
+  templateById,
   type Palette,
   type PrivateDesign,
 } from "@/domain/private-design";
 import type { InvitationContent } from "@/components/private/invitation-canvas";
 import { TemplateGallery } from "@/components/organizer/template-gallery";
+import { BorderOverlay } from "@/components/private/border-overlay";
 import { extractPalette } from "@/lib/extract-palette";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,6 +62,7 @@ export function DesignModule({ design, onChange, content, preview }: DesignModul
         <TemplateGallery design={design} content={content} onSelect={set} />
         <PaletteControl design={design} set={set} />
         <TypeControl design={design} set={set} />
+        <BorderControl design={design} set={set} />
         <BackgroundControl design={design} set={set} />
         <LayoutControl design={design} set={set} />
       </div>
@@ -400,45 +404,112 @@ function BackgroundControl({
   design: PrivateDesign;
   set: (patch: Partial<PrivateDesign>) => void;
 }) {
+  const [family, setFamily] = React.useState<string | null>(null);
+  const families = [...new Set(MOTIFS.map((motif) => motif.family))];
+  const shown = family ? MOTIFS.filter((motif) => motif.family === family) : MOTIFS;
+
   return (
     <Section
       title="Background"
-      description="Patterns are drawn from your own accent colour, so they cannot clash."
+      description="Every pattern is drawn from your own accent colour, so none of them can clash."
+      action={
+        <div className="flex flex-wrap justify-end gap-1.5">
+          <Chip label="All" active={family === null} onClick={() => setFamily(null)} />
+          {families.map((option) => (
+            <Chip
+              key={option}
+              label={option.charAt(0) + option.slice(1).toLowerCase()}
+              active={family === option}
+              onClick={() => setFamily(option)}
+            />
+          ))}
+        </div>
+      }
     >
-      <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-        {BACKGROUNDS.map((background) => {
-          const active = design.backgroundId === background.id;
-          // Each swatch previews itself using the design's live colours.
-          const swatchTheme = resolveTheme({ ...design, backgroundId: background.id });
+      <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+        {shown.map((motif) => {
+          const active = design.backgroundId === motif.id;
+          const swatchTheme = resolveTheme({ ...design, backgroundId: motif.id });
           return (
-            <li key={background.id}>
+            <li key={motif.id}>
               <button
                 type="button"
-                onClick={() => set({ backgroundId: background.id })}
+                onClick={() => set({ backgroundId: motif.id })}
                 aria-pressed={active}
+                title={motif.description}
                 className={tileClass(active)}
               >
                 {active ? <Tick /> : null}
                 <span
-                  className="mb-2 block h-14 rounded-md border border-line"
+                  className="mb-1.5 block h-12 rounded-md border border-line"
                   style={{
                     background:
-                      background.kind === "PHOTO"
+                      motif.family === "PHOTO"
                         ? `linear-gradient(135deg, ${swatchTheme.accent}55, ${swatchTheme.background})`
                         : swatchTheme.pageBackground,
-                    // Half scale in the swatch: at full size a 48px tile shows
-                    // barely one repeat in a 56px box, which reads as a smudge
-                    // rather than as a pattern.
-                    backgroundSize: background.size
-                      ? `${Math.round(background.size / 2)}px`
+                    // Half scale so a 48px tile shows several repeats rather
+                    // than one smudge.
+                    backgroundSize: motif.size
+                      ? `${Math.round(motif.size / 2)}px`
                       : undefined,
                   }}
                   aria-hidden="true"
                 />
-                <span className="block text-sm font-semibold text-ink">{background.name}</span>
-                <span className="mt-0.5 block text-xs leading-snug text-muted">
-                  {background.description}
+                <span className="block truncate text-xs font-semibold text-ink">{motif.name}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </Section>
+  );
+}
+
+/**
+ * Ornament.
+ *
+ * Each swatch draws the real border at a small scale over the live palette, so
+ * a host is choosing between pictures of the thing rather than its name.
+ */
+function BorderControl({
+  design,
+  set,
+}: {
+  design: PrivateDesign;
+  set: (patch: Partial<PrivateDesign>) => void;
+}) {
+  const template = templateById(design.templateId);
+  const currentId = design.borderId ?? template.borderId;
+  const theme = resolveTheme(design);
+
+  return (
+    <Section
+      title="Ornament"
+      description="Rules, corners, engraved bands and shaped edges."
+    >
+      <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+        {BORDERS.map((border) => {
+          const active = currentId === border.id;
+          return (
+            <li key={border.id}>
+              <button
+                type="button"
+                onClick={() => set({ borderId: border.id })}
+                aria-pressed={active}
+                title={border.description}
+                className={tileClass(active)}
+              >
+                {active ? <Tick /> : null}
+                <span
+                  className="relative mb-1.5 block h-20 overflow-hidden rounded-md border border-line"
+                  style={{ background: theme.background }}
+                  aria-hidden="true"
+                >
+                  {/* Near full scale: a band drawn at 0.4 collapses to a
+                      sub-pixel line and reads as an empty swatch. */}
+                  <BorderOverlay border={border} accent={theme.accent} scale={0.9} />
                 </span>
+                <span className="block truncate text-xs font-semibold text-ink">{border.name}</span>
               </button>
             </li>
           );
@@ -449,6 +520,7 @@ function BackgroundControl({
 }
 
 /* --------------------------------------------------------------- layout -- */
+
 
 function LayoutControl({
   design,
@@ -525,5 +597,31 @@ function LayoutGlyph({ id }: { id: string }) {
         </>
       ) : null}
     </svg>
+  );
+}
+
+function Chip({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        "rounded-pill border px-2.5 py-0.5 text-[11px] font-medium transition-[background-color,border-color]",
+        active
+          ? "border-primary bg-primary-tint text-primary-hover"
+          : "border-line text-ink-secondary hover:border-primary/40",
+      )}
+    >
+      {label}
+    </button>
   );
 }

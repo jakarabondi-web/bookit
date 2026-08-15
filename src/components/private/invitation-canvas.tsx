@@ -1,32 +1,31 @@
 import * as React from "react";
 import { displayTypeStyle, type ResolvedTheme } from "@/domain/private-design";
-import type { InvitationTemplate } from "@/domain/invitation-templates";
+import type { InvitationTemplate } from "@/domain/design/templates";
+import { BorderOverlay, Plate } from "./border-overlay";
 
 /**
  * Draws an invitation from a template.
  *
- * One renderer for all of them, because the templates differ in composition
- * rather than in kind: the same six pieces of content — eyebrow, names, date,
- * place, note, photograph — arranged, framed and set differently. Keeping it
- * one component is what stops the ninth template being the ninth near-copy of
- * a layout file.
+ * One renderer for the whole catalogue, because the designs differ in
+ * composition rather than in kind: the same handful of content — eyebrow,
+ * names, date, place, note, photograph — arranged, framed and set differently.
+ * Keeping it one component is what stops the hundredth template being the
+ * hundredth near-copy of a layout file.
  *
- * Everything scales from `scale`, so the same design draws as a 320px preview
- * tile, a 560px e-card and a full-width microsite hero without a second set of
- * numbers to keep in sync.
+ * Everything scales from `scale`, so the same design draws as a 130px gallery
+ * tile, a 560px e-card and a full-width hero without a second set of numbers to
+ * keep in sync.
  */
 
 export interface InvitationContent {
   eyebrow: string;
-  /** Already joined the way the headline should read them. */
   names: string;
-  /** Two initials for templates that show a monogram. */
   monogram: string;
   dateLine: string;
-  /** e.g. "12" — used by the numeral and stamp date settings. */
   dateDay: string;
   dateMonth: string;
   dateYear: string;
+  dateWeekday: string;
   timeLine: string;
   placeLine: string;
   note?: string | null;
@@ -39,11 +38,7 @@ export interface InvitationCanvasProps {
   content: InvitationContent;
   /** 1 is the e-card's natural size. */
   scale?: number;
-  /**
-   * Thumbnail mode: drops the long note. A gallery tile is showing the design,
-   * and a paragraph of body copy at 0.4 scale is a grey smudge that pushes the
-   * composition out of frame.
-   */
+  /** Thumbnail mode: drops the long note, which is a smudge below ~0.5. */
   compact?: boolean;
   className?: string;
   style?: React.CSSProperties;
@@ -60,52 +55,30 @@ export function InvitationCanvas({
   className,
   style,
 }: InvitationCanvasProps) {
-  const px = (value: number) => Math.round(value * scale);
+  const px = (value: number) => value * scale;
   const accent = theme.accent;
+  const border = theme.border;
 
-  const showPhoto = Boolean(content.photoUrl) && template.photo !== "NONE";
-  const motif =
-    template.motifStrength === "NONE" ? theme.background : theme.pageBackground;
+  const photoPlacement = content.photoUrl ? template.photo : "NONE";
+  const showPhoto = photoPlacement !== "NONE";
+
+  // The optical size correction from the type pairing — a script at 42px reads
+  // far smaller than a Didone at 42px.
+  const nameSize = px(BASE_NAME_SIZE * template.nameScale * (theme.fonts.sizeAdjust ?? 1));
 
   const nameStyle: React.CSSProperties = {
     ...displayTypeStyle(theme.fonts),
-    fontSize: px(BASE_NAME_SIZE * template.nameScale),
-    lineHeight: template.nameSetting === "STACKED_PLAIN" ? 0.98 : 1.08,
+    fontSize: nameSize,
+    lineHeight: template.nameSetting === "STACKED_PLAIN" ? 0.96 : 1.08,
     margin: 0,
     color: theme.ink,
     ...(template.nameUppercase ? { textTransform: "uppercase" as const } : {}),
     ...(template.nameTracking ? { letterSpacing: template.nameTracking } : {}),
   };
 
-  const names = <Names template={template} content={content} style={nameStyle} px={px} accent={accent} />;
-
-  const eyebrow =
-    template.eyebrow === "HIDDEN" ? null : (
-      <p
-        style={
-          template.eyebrow === "SMALL_ITALIC"
-            ? {
-                margin: 0,
-                fontFamily: theme.fonts.displayFont,
-                fontStyle: "italic",
-                fontSize: px(15),
-                color: theme.inkSoft,
-              }
-            : {
-                margin: 0,
-                fontSize: px(10),
-                letterSpacing: "0.24em",
-                textTransform: "uppercase",
-                color: theme.inkSoft,
-              }
-        }
-      >
-        {content.eyebrow}
-      </p>
-    );
-
+  const names = <Names template={template} content={content} style={nameStyle} theme={theme} />;
+  const eyebrow = <Eyebrow template={template} theme={theme} content={content} px={px} />;
   const divider = <Divider kind={template.divider} accent={accent} px={px} />;
-
   const date = <DateBlock template={template} theme={theme} content={content} px={px} />;
 
   const details = (
@@ -114,19 +87,20 @@ export function InvitationCanvas({
     </p>
   );
 
-  const note = content.note && !compact ? (
-    <p
-      style={{
-        margin: 0,
-        fontSize: px(12),
-        lineHeight: 1.65,
-        color: theme.inkSoft,
-        maxWidth: "30em",
-      }}
-    >
-      {content.note}
-    </p>
-  ) : null;
+  const note =
+    content.note && !compact ? (
+      <p
+        style={{
+          margin: 0,
+          fontSize: px(12),
+          lineHeight: 1.65,
+          color: theme.inkSoft,
+          maxWidth: "32em",
+        }}
+      >
+        {content.note}
+      </p>
+    ) : null;
 
   const photo = showPhoto ? (
     // eslint-disable-next-line @next/next/no-img-element
@@ -137,190 +111,217 @@ export function InvitationCanvas({
     />
   ) : null;
 
+  const stack = (children: React.ReactNode, align: "center" | "left" = "center") => (
+    <div
+      style={{
+        padding: `${px(38)}px ${px(30)}px`,
+        textAlign: align,
+        display: "flex",
+        flexDirection: "column",
+        gap: px(15),
+        alignItems: align === "center" ? "center" : "flex-start",
+      }}
+    >
+      {children}
+    </div>
+  );
+
   /* ------------------------------------------------------ compositions -- */
 
   let body: React.ReactNode;
 
-  if (template.composition === "ASYMMETRIC") {
-    body = (
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: showPhoto && template.photo === "SIDE" ? "1.15fr 0.85fr" : "1fr",
-          alignItems: "stretch",
-          minHeight: px(320),
-        }}
-      >
+  switch (template.composition) {
+    case "ASYMMETRIC":
+      body = (
         <div
           style={{
-            padding: `${px(38)}px ${px(30)}px`,
-            display: "flex",
-            flexDirection: "column",
-            gap: px(16),
-            justifyContent: "center",
-            textAlign: "left",
+            display: "grid",
+            gridTemplateColumns: photoPlacement === "SIDE" ? "1.1fr 0.9fr" : "1fr",
+            alignItems: "stretch",
+            height: "100%",
           }}
         >
+          {stack(
+            <>
+              {eyebrow}
+              {names}
+              {date}
+              {details}
+              {note}
+            </>,
+            "left",
+          )}
+          {photoPlacement === "SIDE" ? <div style={{ position: "relative" }}>{photo}</div> : null}
+        </div>
+      );
+      break;
+
+    case "SPLIT": {
+      const [left, right] = splitNames(content.names);
+      body = stack(
+        <>
+          {eyebrow}
+          <Monogram style={template.monogram} text={content.monogram} theme={theme} px={px} />
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr auto 1fr",
+              alignItems: "center",
+              gap: px(16),
+              width: "100%",
+            }}
+          >
+            <span style={{ ...nameStyle, textAlign: "right" }}>{left}</span>
+            <span
+              aria-hidden="true"
+              style={{ width: 1, height: nameSize * 1.4, background: `${accent}66`, justifySelf: "center" }}
+            />
+            <span style={{ ...nameStyle, textAlign: "left" }}>{right}</span>
+          </div>
+          {date}
+          {details}
+          {note}
+        </>,
+      );
+      break;
+    }
+
+    case "ARCH":
+      body = stack(
+        <>
+          {photoPlacement === "ARCH" ? (
+            <div
+              style={{
+                width: "66%",
+                aspectRatio: "4 / 5",
+                minHeight: 0,
+                flexShrink: 1,
+                borderRadius: `${px(999)}px ${px(999)}px ${px(6)}px ${px(6)}px`,
+                overflow: "hidden",
+                border: `1px solid ${accent}55`,
+              }}
+            >
+              {photo}
+            </div>
+          ) : null}
+          {eyebrow}
+          {names}
+          {divider}
+          {date}
+          {details}
+          {note}
+        </>,
+      );
+      break;
+
+    case "POSTER":
+      body = (
+        <div
+          style={{
+            padding: `${px(32)}px ${px(26)}px`,
+            display: "flex",
+            flexDirection: "column",
+            gap: px(14),
+            height: "100%",
+            justifyContent: "space-between",
+          }}
+        >
+          <div style={{ display: "flex", flexDirection: "column", gap: px(12) }}>
+            {eyebrow}
+            {names}
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: px(12) }}>
+            <span
+              aria-hidden="true"
+              style={{ display: "block", height: px(5), width: "100%", background: accent }}
+            />
+            <div style={{ display: "flex", flexWrap: "wrap", gap: px(14), alignItems: "baseline" }}>
+              {date}
+              {details}
+            </div>
+            {note}
+          </div>
+        </div>
+      );
+      break;
+
+    case "STACKED_RULES":
+      body = stack(
+        <>
+          {eyebrow}
+          <span aria-hidden="true" style={{ width: "100%", height: 1, background: `${accent}55` }} />
+          {names}
+          <span aria-hidden="true" style={{ width: "100%", height: 1, background: `${accent}55` }} />
+          {date}
+          {details}
+          {note}
+        </>,
+        "left",
+      );
+      break;
+
+    case "PLATE":
+      body = (
+        <div style={{ position: "relative", padding: px(22), height: "100%" }}>
+          {border.plate ? (
+            <Plate spec={border.plate} accent={accent} />
+          ) : null}
+          <div style={{ position: "relative", height: "100%" }}>
+            {stack(
+              <>
+                {eyebrow}
+                <Monogram style={template.monogram} text={content.monogram} theme={theme} px={px} />
+                {names}
+                {divider}
+                {date}
+                {details}
+                {note}
+              </>,
+            )}
+          </div>
+        </div>
+      );
+      break;
+
+    case "CORNER":
+      body = stack(
+        <>
           {eyebrow}
           {names}
           {date}
           {details}
           {note}
-        </div>
-        {showPhoto && template.photo === "SIDE" ? (
-          <div style={{ position: "relative" }}>{photo}</div>
-        ) : null}
-      </div>
-    );
-  } else if (template.composition === "SPLIT") {
-    const [left, right] = splitNames(content.names);
-    body = (
-      <div
-        style={{
-          padding: `${px(40)}px ${px(30)}px`,
-          textAlign: "center",
-          display: "flex",
-          flexDirection: "column",
-          gap: px(18),
-          alignItems: "center",
-        }}
-      >
-        {eyebrow}
-        <Monogram style={template.monogram} text={content.monogram} theme={theme} px={px} />
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr auto 1fr",
-            alignItems: "center",
-            gap: px(18),
-            width: "100%",
-          }}
-        >
-          <span style={{ ...nameStyle, textAlign: "right" }}>{left}</span>
-          <span
-            aria-hidden="true"
-            style={{ width: 1, height: px(52), background: `${accent}66`, justifySelf: "center" }}
-          />
-          <span style={{ ...nameStyle, textAlign: "left" }}>{right}</span>
-        </div>
-        {date}
-        {details}
-        {note}
-      </div>
-    );
-  } else if (template.composition === "ARCH") {
-    body = (
-      <div
-        style={{
-          padding: `${px(28)}px ${px(30)}px ${px(38)}px`,
-          textAlign: "center",
-          display: "flex",
-          flexDirection: "column",
-          gap: px(16),
-          alignItems: "center",
-        }}
-      >
-        {showPhoto && template.photo === "ARCH" ? (
-          <div
-            style={{
-              width: "68%",
-              aspectRatio: "4 / 5",
-              minHeight: 0,
-              flexShrink: 1,
-              // The arch is the whole idea of this one: a window, not a card.
-              borderRadius: `${px(999)}px ${px(999)}px ${px(8)}px ${px(8)}px`,
-              overflow: "hidden",
-              border: `1px solid ${accent}55`,
-            }}
-          >
-            {photo}
-          </div>
-        ) : null}
-        {eyebrow}
-        {names}
-        {divider}
-        {date}
-        {details}
-        {note}
-      </div>
-    );
-  } else if (template.composition === "POSTER") {
-    body = (
-      <div
-        style={{
-          padding: `${px(34)}px ${px(26)}px`,
-          display: "flex",
-          flexDirection: "column",
-          gap: px(14),
-          height: "100%",
-          justifyContent: "space-between",
-        }}
-      >
-        {eyebrow}
-        <div>{names}</div>
-        <span
-          aria-hidden="true"
-          style={{ display: "block", height: px(5), width: "100%", background: accent }}
-        />
-        <div style={{ display: "flex", flexWrap: "wrap", gap: px(16), alignItems: "baseline" }}>
+        </>,
+        "left",
+      );
+      break;
+
+    case "BANDED":
+    case "CENTRED":
+    default:
+      body = stack(
+        <>
+          <Monogram style={template.monogram} text={content.monogram} theme={theme} px={px} />
+          {eyebrow}
+          {names}
+          {divider}
           {date}
           {details}
-        </div>
-        {note}
-      </div>
-    );
-  } else if (template.composition === "BANDED") {
-    body = (
-      <div
-        style={{
-          padding: `${px(34)}px ${px(30)}px`,
-          textAlign: "center",
-          display: "flex",
-          flexDirection: "column",
-          gap: px(16),
-          alignItems: "center",
-        }}
-      >
-        {eyebrow}
-        {names}
-        {date}
-        {details}
-        {note}
-      </div>
-    );
-  } else {
-    // CENTRED
-    body = (
-      <div
-        style={{
-          padding: `${px(38)}px ${px(30)}px`,
-          textAlign: "center",
-          display: "flex",
-          flexDirection: "column",
-          gap: px(16),
-          alignItems: "center",
-        }}
-      >
-        <Monogram style={template.monogram} text={content.monogram} theme={theme} px={px} />
-        {eyebrow}
-        {names}
-        {divider}
-        {date}
-        {details}
-        {note}
-      </div>
-    );
+          {note}
+        </>,
+      );
   }
 
-  /* ------------------------------------------------------------ frames -- */
+  /* --------------------------------------------------------- assembly -- */
 
-  const hasTopPhoto = showPhoto && template.photo === "TOP";
+  const fullBleed = photoPlacement === "FULL_BLEED";
+  const topPhoto = photoPlacement === "TOP";
 
   return (
     <div
       className={className}
       style={{
-        background: motif,
+        background: theme.pageBackground,
         color: theme.ink,
         fontFamily: theme.bodyFont,
         overflow: "hidden",
@@ -330,17 +331,29 @@ export function InvitationCanvas({
         ...style,
       }}
     >
-      {/* Photograph above the card, for the compositions that do not place it
-          themselves. */}
-      {hasTopPhoto ? (
+      {fullBleed ? (
+        <>
+          <span style={{ position: "absolute", inset: 0 }}>{photo}</span>
+          {/* Type over a photograph needs its own ground to stay readable. */}
+          <span
+            aria-hidden="true"
+            style={{
+              position: "absolute",
+              inset: 0,
+              background:
+                "linear-gradient(to bottom, rgba(10,9,8,0.30) 0%, rgba(10,9,8,0.52) 55%, rgba(10,9,8,0.72) 100%)",
+            }}
+          />
+        </>
+      ) : null}
+
+      {topPhoto ? (
         <div style={{ height: px(150), position: "relative", flexShrink: 0 }}>{photo}</div>
       ) : null}
 
-      {/* The type block takes the remaining height and centres in it, so a
-          short invitation sits in the middle of its card rather than stranding
-          empty ground beneath it. */}
       <div
         style={{
+          position: "relative",
           flex: 1,
           minHeight: 0,
           display: "flex",
@@ -349,78 +362,143 @@ export function InvitationCanvas({
             template.composition === "ASYMMETRIC" || template.composition === "POSTER"
               ? "stretch"
               : "center",
+          // Over a photograph the palette's ink would vanish; force light type.
+          color: fullBleed ? "#FFFFFF" : undefined,
         }}
       >
-        {template.frame === "TOP_BOTTOM_BAND" ? (
-          <>
-            <Band theme={theme} px={px} />
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
-              {body}
-            </div>
-            <Band theme={theme} px={px} flip />
-          </>
-        ) : (
-          body
-        )}
+        <FullBleedTypeColour active={fullBleed}>{body}</FullBleedTypeColour>
       </div>
 
-      {/* Ornament frames the whole card, not just the type block. */}
-      {template.frame === "DOUBLE_RULE" ? (
-        <span
-          aria-hidden="true"
-          style={{
-            position: "absolute",
-            inset: px(12),
-            border: `1px solid ${accent}`,
-            outline: `1px solid ${accent}`,
-            outlineOffset: px(3),
-            pointerEvents: "none",
-          }}
-        />
-      ) : null}
-
-      {template.frame === "HAIRLINE" ? (
-        <span
-          aria-hidden="true"
-          style={{
-            position: "absolute",
-            inset: px(14),
-            border: `1px solid ${accent}99`,
-            pointerEvents: "none",
-          }}
-        />
-      ) : null}
-
-      {template.frame === "CORNERS" ? <Corners accent={accent} px={px} /> : null}
+      <BorderOverlay border={border} accent={fullBleed ? "#FFFFFF" : accent} scale={scale} />
     </div>
   );
 }
+
+/**
+ * Over a full-bleed photograph every colour in the palette is wrong, so the
+ * type is forced light rather than each element being asked to decide.
+ */
+function FullBleedTypeColour({
+  active,
+  children,
+}: {
+  active: boolean;
+  children: React.ReactNode;
+}) {
+  if (!active) return <>{children}</>;
+  return (
+    <div
+      style={{
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ["--forced" as any]: "#FFFFFF",
+        color: "#FFFFFF",
+        textShadow: "0 1px 18px rgba(0,0,0,0.45)",
+      }}
+    >
+      <span style={{ display: "contents" }}>{children}</span>
+    </div>
+  );
+}
+
 /* ------------------------------------------------------------------ bits -- */
+
+function Eyebrow({
+  template,
+  theme,
+  content,
+  px,
+}: {
+  template: InvitationTemplate;
+  theme: ResolvedTheme;
+  content: InvitationContent;
+  px: (value: number) => number;
+}) {
+  if (template.eyebrow === "HIDDEN") return null;
+
+  if (template.eyebrow === "SMALL_ITALIC") {
+    return (
+      <p
+        style={{
+          margin: 0,
+          fontFamily: theme.fonts.displayFont,
+          fontStyle: "italic",
+          fontSize: px(15),
+          color: theme.inkSoft,
+        }}
+      >
+        {content.eyebrow}
+      </p>
+    );
+  }
+
+  if (template.eyebrow === "RULED") {
+    return (
+      <p
+        style={{
+          margin: 0,
+          width: "100%",
+          display: "flex",
+          alignItems: "center",
+          gap: px(10),
+          fontSize: px(10),
+          letterSpacing: "0.2em",
+          textTransform: "uppercase",
+          color: theme.inkSoft,
+        }}
+      >
+        {content.eyebrow}
+        <span aria-hidden="true" style={{ flex: 1, height: 1, background: `${theme.accent}55` }} />
+      </p>
+    );
+  }
+
+  return (
+    <p
+      style={{
+        margin: 0,
+        fontSize: px(10),
+        letterSpacing: "0.24em",
+        textTransform: "uppercase",
+        color: theme.inkSoft,
+      }}
+    >
+      {content.eyebrow}
+    </p>
+  );
+}
 
 function Names({
   template,
   content,
   style,
-  px,
-  accent,
+  theme,
 }: {
   template: InvitationTemplate;
   content: InvitationContent;
   style: React.CSSProperties;
-  px: (value: number) => number;
-  accent: string;
+  theme: ResolvedTheme;
 }) {
+  const [left, right] = splitNames(content.names);
+
+  if (template.nameSetting === "INITIALS_LARGE") {
+    return (
+      <p style={{ ...style, fontSize: Number(style.fontSize) * 1.9, lineHeight: 1 }}>
+        {content.monogram}
+      </p>
+    );
+  }
+
   if (template.nameSetting === "STACKED_AMPERSAND") {
-    const [left, right] = splitNames(content.names);
     return (
       <p style={{ ...style, display: "flex", flexDirection: "column", alignItems: "center" }}>
         <span>{left}</span>
         <span
           style={{
-            fontSize: px(28 * template.nameScale),
-            color: accent,
-            lineHeight: 1.4,
+            fontSize: Number(style.fontSize) * 0.62,
+            color: theme.accent,
+            lineHeight: 1.35,
             fontStyle: "italic",
+            textTransform: "none",
           }}
         >
           &amp;
@@ -431,7 +509,6 @@ function Names({
   }
 
   if (template.nameSetting === "STACKED_PLAIN") {
-    const [left, right] = splitNames(content.names);
     return (
       <p style={style}>
         {left}
@@ -448,7 +525,7 @@ function Names({
   return <p style={style}>{content.names}</p>;
 }
 
-/** Splits "Wanjiru & Kevin" into its two halves, tolerating any connector. */
+/** Splits "Wanjiru & Kevin" into its halves, tolerating any connector. */
 function splitNames(names: string): [string, string] {
   const parts = names.split(/\s*(?:&|and|·)\s*/i);
   if (parts.length >= 2) return [parts[0]!, parts.slice(1).join(" & ")];
@@ -468,24 +545,44 @@ function Monogram({
 }) {
   if (style === "NONE") return null;
 
-  const size = px(64);
+  const size = px(60);
   const shared: React.CSSProperties = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     fontFamily: theme.fonts.displayFont,
-    fontSize: px(17),
+    fontSize: px(16),
     letterSpacing: "0.04em",
     color: theme.accent,
+    flexShrink: 0,
   };
 
   if (style === "PLAIN_INITIALS") {
-    return <span style={{ ...shared, letterSpacing: "0.2em" }}>{text}</span>;
+    return <span style={{ ...shared, letterSpacing: "0.24em" }}>{text}</span>;
+  }
+
+  if (style === "SHIELD") {
+    return (
+      <span style={{ ...shared, position: "relative", width: size, height: size * 1.15 }}>
+        <svg
+          viewBox="0 0 100 115"
+          aria-hidden="true"
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
+        >
+          <path
+            d="M50 2 L96 16 L96 62 C96 90 74 106 50 113 C26 106 4 90 4 62 L4 16 Z"
+            fill="none"
+            stroke={theme.accent}
+            strokeWidth="3"
+          />
+        </svg>
+        <span style={{ position: "relative" }}>{text}</span>
+      </span>
+    );
   }
 
   return (
     <span
-      aria-hidden="true"
       style={{
         ...shared,
         width: size,
@@ -527,6 +624,19 @@ function Divider({
           />
         ))}
       </span>
+    );
+  }
+
+  if (kind === "ORNAMENT") {
+    // A printer's fleuron: two answering curves around a centre point.
+    return (
+      <svg width={px(56)} height={px(14)} viewBox="0 0 112 28" aria-hidden="true">
+        <g fill="none" stroke={accent} strokeWidth="2" opacity="0.8">
+          <path d="M2 14 C20 14 26 4 38 4 C48 4 52 12 44 16 C38 19 32 14 40 10" />
+          <path d="M110 14 C92 14 86 4 74 4 C64 4 60 12 68 16 C74 19 80 14 72 10" />
+        </g>
+        <circle cx="56" cy="14" r="3" fill={accent} />
+      </svg>
     );
   }
 
@@ -590,7 +700,7 @@ function DateBlock({
           gap: px(8),
           padding: `${px(6)}px ${px(12)}px`,
           border: `1px solid ${theme.accent}66`,
-          borderRadius: px(4),
+          borderRadius: px(3),
           fontSize: px(11),
           letterSpacing: "0.14em",
           textTransform: "uppercase",
@@ -602,95 +712,49 @@ function DateBlock({
     );
   }
 
+  if (template.dateStyle === "STACKED") {
+    return (
+      <p
+        style={{
+          margin: 0,
+          fontSize: px(11),
+          letterSpacing: "0.2em",
+          textTransform: "uppercase",
+          lineHeight: 1.9,
+          color: theme.inkSoft,
+        }}
+      >
+        {content.dateWeekday}
+        <br />
+        {content.dateDay} {content.dateMonth} {content.dateYear}
+      </p>
+    );
+  }
+
+  if (template.dateStyle === "RULED") {
+    return (
+      <p
+        style={{
+          margin: 0,
+          width: "100%",
+          display: "flex",
+          alignItems: "center",
+          gap: px(10),
+          fontSize: px(12),
+          letterSpacing: "0.12em",
+          textTransform: "uppercase",
+          color: theme.inkSoft,
+        }}
+      >
+        {content.dateDay} {content.dateMonth} {content.dateYear}
+        <span aria-hidden="true" style={{ flex: 1, height: 1, background: `${theme.accent}44` }} />
+      </p>
+    );
+  }
+
   return (
-    <p
-      style={{
-        ...displayTypeStyle(theme.fonts),
-        margin: 0,
-        fontSize: px(19),
-        color: theme.ink,
-      }}
-    >
+    <p style={{ ...displayTypeStyle(theme.fonts), margin: 0, fontSize: px(19), color: theme.ink }}>
       {content.dateLine}
     </p>
-  );
-}
-
-/** The printed band a kanga carries at its head and foot. */
-function Band({
-  theme,
-  px,
-  flip,
-}: {
-  theme: ResolvedTheme;
-  px: (value: number) => number;
-  flip?: boolean;
-}) {
-  return (
-    <span
-      aria-hidden="true"
-      style={{
-        display: "block",
-        height: px(26),
-        background: theme.accent,
-        opacity: 0.92,
-        transform: flip ? "scaleY(-1)" : undefined,
-        maskImage:
-          "repeating-linear-gradient(90deg, #000 0 14px, transparent 14px 20px)",
-        WebkitMaskImage:
-          "repeating-linear-gradient(90deg, #000 0 14px, transparent 14px 20px)",
-      }}
-    />
-  );
-}
-
-function Corners({ accent, px }: { accent: string; px: (value: number) => number }) {
-  const arm = px(22);
-  const inset = px(12);
-  const common: React.CSSProperties = {
-    position: "absolute",
-    width: arm,
-    height: arm,
-    pointerEvents: "none",
-  };
-  return (
-    <span aria-hidden="true">
-      <span
-        style={{
-          ...common,
-          top: inset,
-          left: inset,
-          borderTop: `1px solid ${accent}`,
-          borderLeft: `1px solid ${accent}`,
-        }}
-      />
-      <span
-        style={{
-          ...common,
-          top: inset,
-          right: inset,
-          borderTop: `1px solid ${accent}`,
-          borderRight: `1px solid ${accent}`,
-        }}
-      />
-      <span
-        style={{
-          ...common,
-          bottom: inset,
-          left: inset,
-          borderBottom: `1px solid ${accent}`,
-          borderLeft: `1px solid ${accent}`,
-        }}
-      />
-      <span
-        style={{
-          ...common,
-          bottom: inset,
-          right: inset,
-          borderBottom: `1px solid ${accent}`,
-          borderRight: `1px solid ${accent}`,
-        }}
-      />
-    </span>
   );
 }

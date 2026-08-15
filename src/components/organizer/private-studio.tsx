@@ -13,7 +13,7 @@ import {
   Users,
 } from "lucide-react";
 import { MediaPurpose } from "@/domain/media";
-import { templateById } from "@/domain/invitation-templates";
+import { templateById } from "@/domain/private-design";
 import { resolveTheme } from "@/domain/private-design";
 import { formatMoney, money } from "@/domain/money";
 import {
@@ -753,6 +753,7 @@ function invitationContent(
 ): InvitationContent {
   const starts = new Date(props.startsAt);
   const parts = new Intl.DateTimeFormat("en-KE", {
+    weekday: "long",
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -768,6 +769,7 @@ function invitationContent(
     dateDay: part("day"),
     dateMonth: part("month").toUpperCase(),
     dateYear: part("year"),
+    dateWeekday: part("weekday"),
     timeLine: formatTime(props.startsAt),
     placeLine: `${props.venueName}, ${props.venueCity}`,
     note: page.tagline,

@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { designOf, defaultPrivatePage } from "@/domain/private-event";
 import {
-  BACKGROUNDS,
+  BORDERS,
+  MOTIFS,
   CUSTOM_PALETTE_ID,
   FONT_PAIRINGS,
   PALETTES,
@@ -15,10 +16,12 @@ import {
   type PrivateDesign,
 } from "@/domain/private-design";
 import {
+  COLLECTIONS,
+  DEFAULT_TEMPLATE_ID,
   INVITATION_TEMPLATES,
-  TEMPLATE_MOODS,
+  borderById,
   templateById,
-} from "@/domain/invitation-templates";
+} from "@/domain/private-design";
 import { luminance, paletteFromSwatches } from "@/lib/extract-palette";
 
 /**
@@ -39,7 +42,7 @@ describe("resolveTheme", () => {
   it("resolves every combination of the four axes", () => {
     for (const palette of PALETTES) {
       for (const fonts of FONT_PAIRINGS) {
-        for (const background of BACKGROUNDS) {
+        for (const background of MOTIFS) {
           const theme = resolveTheme(
             design({ paletteId: palette.id, fontId: fonts.id, backgroundId: background.id }),
           );
@@ -125,6 +128,7 @@ describe("custom palettes", () => {
     id: CUSTOM_PALETTE_ID,
     name: "Ours",
     description: "From your image.",
+    family: "Warm",
     background: "#FFF8F0",
     surface: "#FFFFFF",
     accent: "#7A3B2E",
@@ -222,10 +226,16 @@ function hexToRgb(hex: string) {
 describe("invitation templates", () => {
   it("gives every template defaults that resolve", () => {
     for (const template of INVITATION_TEMPLATES) {
-      const theme = resolveTheme({ ...template.defaults, templateId: template.id });
+      const theme = resolveTheme({
+        templateId: template.id,
+        paletteId: template.defaults.paletteId,
+        fontId: template.defaults.fontId,
+        backgroundId: template.defaults.motifId,
+        heroLayout: "FRAMED",
+      });
       expect(theme.palette.id).toBe(template.defaults.paletteId);
       expect(theme.fonts.id).toBe(template.defaults.fontId);
-      expect(theme.backgroundId).toBe(template.defaults.backgroundId);
+      expect(theme.motifId).toBe(template.defaults.motifId);
     }
   });
 
@@ -234,9 +244,9 @@ describe("invitation templates", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it("falls back to a real template for an unknown id", () => {
-    expect(templateById("does-not-exist").id).toBe(INVITATION_TEMPLATES[0]!.id);
-    expect(templateById(undefined).id).toBe(INVITATION_TEMPLATES[0]!.id);
+  it("falls back to the documented default for an unknown id", () => {
+    expect(templateById("does-not-exist").id).toBe(DEFAULT_TEMPLATE_ID);
+    expect(templateById(undefined).id).toBe(DEFAULT_TEMPLATE_ID);
   });
 
   it("only places a photo where the composition has room for one", () => {
@@ -245,15 +255,29 @@ describe("invitation templates", () => {
       if (template.photo === "ARCH") expect(template.composition).toBe("ARCH");
       // A bordered card cannot carry a photograph across its head without the
       // rule cutting through it.
-      if (template.frame === "DOUBLE_RULE" || template.frame === "HAIRLINE") {
-        expect(template.photo).toBe("NONE");
+      const border = borderById(template.borderId);
+      if (border.rules && border.rules.length > 1) {
+        expect(template.photo).not.toBe("TOP");
       }
     }
   });
 
-  it("covers every mood the gallery filters by", () => {
-    for (const mood of TEMPLATE_MOODS) {
-      expect(INVITATION_TEMPLATES.some((template) => template.mood === mood)).toBe(true);
+  it("points every template at ornament, colour, type and a motif that exist", () => {
+    for (const template of INVITATION_TEMPLATES) {
+      expect(BORDERS.some((border) => border.id === template.borderId)).toBe(true);
+      expect(PALETTES.some((p) => p.id === template.defaults.paletteId)).toBe(true);
+      expect(FONT_PAIRINGS.some((f) => f.id === template.defaults.fontId)).toBe(true);
+      expect(MOTIFS.some((m) => m.id === template.defaults.motifId)).toBe(true);
+    }
+  });
+
+  it("ships a catalogue worth browsing", () => {
+    expect(INVITATION_TEMPLATES.length).toBeGreaterThanOrEqual(100);
+  });
+
+  it("fills every collection the gallery filters by", () => {
+    for (const collection of COLLECTIONS) {
+      expect(INVITATION_TEMPLATES.some((t) => t.collection === collection)).toBe(true);
     }
   });
 });

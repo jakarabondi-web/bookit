@@ -10,6 +10,30 @@ import {
   Outfit,
   Playfair_Display,
   Plus_Jakarta_Sans,
+  Amatic_SC,
+  Archivo,
+  Bebas_Neue,
+  Bitter,
+  Bodoni_Moda,
+  Cardo,
+  Cormorant_Upright,
+  Dancing_Script,
+  EB_Garamond,
+  Gilda_Display,
+  Great_Vibes,
+  Italiana,
+  Josefin_Sans,
+  Libre_Baskerville,
+  Lora,
+  Oswald,
+  Parisienne,
+  Poiret_One,
+  Prata,
+  Rozha_One,
+  Space_Grotesk,
+  Spectral,
+  Syne,
+  Tenor_Sans,
 } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
@@ -114,6 +138,187 @@ const caveat = Caveat({
   variable: "--font-caveat",
 });
 
+const bodoni = Bodoni_Moda({
+  subsets: ["latin"],
+  display: "swap",
+  preload: false,
+  variable: "--font-bodoni",
+});
+
+const baskerville = Libre_Baskerville({
+  subsets: ["latin"],
+  display: "swap",
+  preload: false,
+  variable: "--font-baskerville",
+});
+
+const lora = Lora({
+  subsets: ["latin"],
+  display: "swap",
+  preload: false,
+  variable: "--font-lora",
+});
+
+const garamond = EB_Garamond({
+  subsets: ["latin"],
+  display: "swap",
+  preload: false,
+  variable: "--font-garamond",
+});
+
+const spectral = Spectral({
+  subsets: ["latin"],
+  display: "swap",
+  preload: false,
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-spectral",
+});
+
+const bitter = Bitter({
+  subsets: ["latin"],
+  display: "swap",
+  preload: false,
+  variable: "--font-bitter",
+});
+
+const cormorantupright = Cormorant_Upright({
+  subsets: ["latin"],
+  display: "swap",
+  preload: false,
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-cormorant-upright",
+});
+
+const italiana = Italiana({
+  subsets: ["latin"],
+  display: "swap",
+  preload: false,
+  weight: "400",
+  variable: "--font-italiana",
+});
+
+const gilda = Gilda_Display({
+  subsets: ["latin"],
+  display: "swap",
+  preload: false,
+  weight: "400",
+  variable: "--font-gilda",
+});
+
+const prata = Prata({
+  subsets: ["latin"],
+  display: "swap",
+  preload: false,
+  weight: "400",
+  variable: "--font-prata",
+});
+
+const poiret = Poiret_One({
+  subsets: ["latin"],
+  display: "swap",
+  preload: false,
+  weight: "400",
+  variable: "--font-poiret",
+});
+
+const josefin = Josefin_Sans({
+  subsets: ["latin"],
+  display: "swap",
+  preload: false,
+  variable: "--font-josefin",
+});
+
+const syne = Syne({
+  subsets: ["latin"],
+  display: "swap",
+  preload: false,
+  variable: "--font-syne",
+});
+
+const spacegrotesk = Space_Grotesk({
+  subsets: ["latin"],
+  display: "swap",
+  preload: false,
+  variable: "--font-space-grotesk",
+});
+
+const archivo = Archivo({
+  subsets: ["latin"],
+  display: "swap",
+  preload: false,
+  variable: "--font-archivo",
+});
+
+const oswald = Oswald({
+  subsets: ["latin"],
+  display: "swap",
+  preload: false,
+  variable: "--font-oswald",
+});
+
+const bebas = Bebas_Neue({
+  subsets: ["latin"],
+  display: "swap",
+  preload: false,
+  weight: "400",
+  variable: "--font-bebas",
+});
+
+const greatvibes = Great_Vibes({
+  subsets: ["latin"],
+  display: "swap",
+  preload: false,
+  weight: "400",
+  variable: "--font-great-vibes",
+});
+
+const parisienne = Parisienne({
+  subsets: ["latin"],
+  display: "swap",
+  preload: false,
+  weight: "400",
+  variable: "--font-parisienne",
+});
+
+const dancing = Dancing_Script({
+  subsets: ["latin"],
+  display: "swap",
+  preload: false,
+  variable: "--font-dancing",
+});
+
+const amatic = Amatic_SC({
+  subsets: ["latin"],
+  display: "swap",
+  preload: false,
+  weight: ["400", "700"],
+  variable: "--font-amatic",
+});
+
+const cardo = Cardo({
+  subsets: ["latin"],
+  display: "swap",
+  preload: false,
+  weight: ["400", "700"],
+  variable: "--font-cardo",
+});
+
+const tenor = Tenor_Sans({
+  subsets: ["latin"],
+  display: "swap",
+  preload: false,
+  weight: "400",
+  variable: "--font-tenor",
+});
+
+const rozha = Rozha_One({
+  subsets: ["latin"],
+  display: "swap",
+  preload: false,
+  weight: "400",
+  variable: "--font-rozha",
+});
+
 const ceremonyFontVariables = [
   marcellus.variable,
   playfair.variable,
@@ -121,6 +326,30 @@ const ceremonyFontVariables = [
   cinzel.variable,
   outfit.variable,
   caveat.variable,
+  bodoni.variable,
+  baskerville.variable,
+  lora.variable,
+  garamond.variable,
+  spectral.variable,
+  bitter.variable,
+  cormorantupright.variable,
+  italiana.variable,
+  gilda.variable,
+  prata.variable,
+  poiret.variable,
+  josefin.variable,
+  syne.variable,
+  spacegrotesk.variable,
+  archivo.variable,
+  oswald.variable,
+  bebas.variable,
+  greatvibes.variable,
+  parisienne.variable,
+  dancing.variable,
+  amatic.variable,
+  cardo.variable,
+  tenor.variable,
+  rozha.variable,
 ].join(" ");
 
 /**

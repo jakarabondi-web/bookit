@@ -167,6 +167,7 @@ export function paletteFromSwatches(swatches: Swatch[], name = "From your image"
     id: CUSTOM_PALETTE_ID,
     name,
     description: "Built from an image you chose.",
+    family: "Warm",
     background: toHex(ground),
     surface: toHex(dark ? mix(ground, WHITE, 0.07) : WHITE),
     accent: toHex(accent),
