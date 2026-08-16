@@ -220,7 +220,15 @@ export function ElementView({
       );
     }
 
-    case "qr":
+    case "qr": {
+      // A code has to be dark modules on a light quiet zone or a phone will not
+      // read it, which means it cannot simply take the palette's ink on the
+      // palette's ground — on a midnight card that is light-on-dark and does
+      // not scan. It gets a plate instead, drawn from whichever two colours in
+      // the palette are furthest apart.
+      const plate = lightest(context.palette);
+      const modules = darkest(context.palette);
+
       return (
         <div
           style={{
@@ -232,7 +240,12 @@ export function ElementView({
             color: colorFor(context.palette, element.colorRole),
           }}
         >
-          <QrPlaceholder />
+          <QrPlaceholder
+            seed={resolveBindings(element.value, context.data)}
+            plate={plate}
+            modules={modules}
+            radius={context.u(4)}
+          />
           {element.caption ? (
             <span
               style={{
@@ -247,6 +260,7 @@ export function ElementView({
           ) : null}
         </div>
       );
+    }
 
     default:
       return null;
@@ -566,38 +580,97 @@ function DividerArt({
 
 /* -------------------------------------------------------------------- qr -- */
 
-/** Fixed module positions, so the stand-in looks like a code rather than noise. */
-/** The three orientation squares every QR code carries. */
-const FINDERS: ReadonlyArray<readonly [number, number]> = [
-  [0, 0],
-  [22, 0],
-  [0, 22],
-];
+/**
+ * A stand-in code.
+ *
+ * The real one is generated per guest at send time, signed, and pointed at that
+ * guest's own invitation. What matters in a preview is that the block reads as
+ * a code at a glance and occupies exactly the space the real one will — a
+ * sparse decorative approximation looks like a rendering fault on a card
+ * someone is deciding whether to pay for. The fill is derived from the value,
+ * so two different links do not draw the same square.
+ */
+const GRID = 21;
 
-const MODULES: ReadonlyArray<readonly [number, number]> = [
-  [10, 2], [12, 4], [14, 2], [16, 6], [10, 8], [18, 10], [12, 12], [16, 14],
-  [10, 16], [20, 18], [14, 20], [12, 24], [18, 22], [22, 14], [24, 20], [20, 26],
-];
+function moduleMap(seed: string): boolean[][] {
+  // A small deterministic PRNG. Not cryptography — this is a drawing.
+  let state = 2166136261;
+  for (let index = 0; index < seed.length; index += 1) {
+    state ^= seed.charCodeAt(index);
+    state = Math.imul(state, 16777619);
+  }
+  const random = () => {
+    state ^= state << 13;
+    state ^= state >>> 17;
+    state ^= state << 5;
+    return ((state >>> 0) % 1000) / 1000;
+  };
 
-/** A visual stand-in until the guest's real code is generated at send time. */
-function QrPlaceholder() {
+  const reserved = (x: number, y: number) =>
+    // The three finders and their separators, plus the timing rows.
+    (x < 8 && y < 8) || (x > GRID - 9 && y < 8) || (x < 8 && y > GRID - 9) || x === 6 || y === 6;
+
+  return Array.from({ length: GRID }, (_, y) =>
+    Array.from({ length: GRID }, (_, x) => (reserved(x, y) ? false : random() > 0.5)),
+  );
+}
+
+function QrPlaceholder({
+  seed,
+  plate,
+  modules,
+  radius,
+}: {
+  seed: string;
+  plate: string;
+  modules: string;
+  radius: string;
+}) {
+  const map = React.useMemo(() => moduleMap(seed), [seed]);
+
   return (
-    <svg viewBox="0 0 29 29" style={{ width: "100%", flex: 1 }} aria-hidden="true">
-      <rect width="29" height="29" fill="none" />
-      {FINDERS.map(([x, y]) => (
-        <g key={`${x}-${y}`} fill="currentColor">
+    <svg
+      viewBox="-2 -2 25 25"
+      style={{ width: "100%", flex: 1, borderRadius: radius, background: plate }}
+      aria-hidden="true"
+    >
+      {[
+        [0, 0],
+        [GRID - 7, 0],
+        [0, GRID - 7],
+      ].map(([x, y]) => (
+        <g key={`${x}-${y}`} fill={modules}>
           <rect x={x} y={y} width="7" height="7" />
-          <rect x={x + 1} y={y + 1} width="5" height="5" fill="var(--qr-ground, #fff)" />
-          <rect x={x + 2} y={y + 2} width="3" height="3" />
+          <rect x={x! + 1} y={y! + 1} width="5" height="5" fill={plate} />
+          <rect x={x! + 2} y={y! + 2} width="3" height="3" />
         </g>
       ))}
-      <g fill="currentColor">
-        {MODULES.map(([x, y]) => (
-          <rect key={`${x}-${y}`} x={x} y={y} width="2" height="2" />
+
+      <g fill={modules}>
+        {/* Timing rows, which is what makes the block read as a code. */}
+        {Array.from({ length: GRID - 16 }, (_, index) => (
+          <rect key={`t-${index}`} x={8 + index} y={6} width={index % 2 ? 0 : 1} height="1" />
         ))}
+        {Array.from({ length: GRID - 16 }, (_, index) => (
+          <rect key={`v-${index}`} x={6} y={8 + index} width="1" height={index % 2 ? 0 : 1} />
+        ))}
+        {map.flatMap((row, y) =>
+          row.map((on, x) =>
+            on ? <rect key={`${x}-${y}`} x={x} y={y} width="1" height="1" /> : null,
+          ),
+        )}
       </g>
     </svg>
   );
+}
+
+/** The palette's two extremes, for anything that has to be read by a machine. */
+function lightest(palette: TemplatePalette): string {
+  return palette.dark ? palette.ink : palette.ground;
+}
+
+function darkest(palette: TemplatePalette): string {
+  return palette.dark ? palette.ground : palette.ink;
 }
 
 function imageFilter(brightness?: number, contrast?: number, saturation?: number): string | undefined {

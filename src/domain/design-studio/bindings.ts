@@ -47,7 +47,35 @@ export interface BindingContext {
     table: string;
     url: string;
   };
+  /**
+   * The order of the day and the menu.
+   *
+   * Lists rather than strings, because the programme and the menu are set as
+   * rows — a time against an item, a course against a dish — and a design that
+   * receives them as one blob of text cannot align the columns.
+   */
+  programme?: { time: string; item: string }[];
+  menu?: { course: string; dish: string }[];
 }
+
+/** Used when an event has not set its own. Neutral enough for any occasion. */
+export const DEFAULT_PROGRAMME: { time: string; item: string }[] = [
+  { time: "2:00", item: "Guests are seated" },
+  { time: "2:30", item: "The ceremony" },
+  { time: "3:30", item: "Photographs and refreshments" },
+  { time: "5:00", item: "Dinner is served" },
+  { time: "7:00", item: "Speeches and toasts" },
+  { time: "8:30", item: "The first dance" },
+  { time: "10:00", item: "Carriages" },
+];
+
+export const DEFAULT_MENU: { course: string; dish: string }[] = [
+  { course: "To begin", dish: "Grilled prawns, tamarind and lime" },
+  { course: "Second", dish: "Roast butternut and coconut soup" },
+  { course: "Main", dish: "Slow-roast lamb, rosemary jus" },
+  { course: "Alongside", dish: "Pilau, kachumbari, seasonal greens" },
+  { course: "To finish", dish: "Passionfruit tart, vanilla cream" },
+];
 
 const PLACEHOLDERS: Record<string, string> = {
   "couple.firstName": "Amara",
@@ -59,6 +87,12 @@ const PLACEHOLDERS: Record<string, string> = {
   "event.venue": "The Venue",
   "event.city": "Nairobi",
   "guest.name": "Our guest",
+  "guest.salutation": "Dear guest",
+  // Per-guest pieces are printed from the guest list; in a preview they show
+  // the shape of what will be printed rather than a made-up person's name.
+  "guest.table": "12",
+  "guest.rsvpCode": "AK-4821",
+  "guest.url": "bookit.co.ke/i/your-invitation",
 };
 
 const BINDING = /\{\{\s*([a-zA-Z]+(?:\.[a-zA-Z]+)*)\s*\}\}/g;
@@ -127,6 +161,22 @@ export const SAMPLE_CONTEXTS: BindingContext[] = [
       rsvpBy: "1 August 2026",
       rsvpUrl: "bookit.co.ke/i/amara-kwame",
     },
+    programme: [
+      { time: "2:00", item: "Guests are seated" },
+      { time: "2:30", item: "The ceremony" },
+      { time: "3:30", item: "Photographs and cocktails" },
+      { time: "5:00", item: "Dinner is served" },
+      { time: "7:00", item: "Speeches and toasts" },
+      { time: "8:30", item: "The first dance" },
+      { time: "10:30", item: "Carriages" },
+    ],
+    menu: [
+      { course: "To begin", dish: "Grilled tiger prawns, tamarind and lime" },
+      { course: "Second", dish: "Roast butternut and coconut soup" },
+      { course: "Main", dish: "Slow-roast lamb, rosemary jus" },
+      { course: "Alongside", dish: "Pilau, kachumbari, seasonal greens" },
+      { course: "To finish", dish: "Passionfruit tart, vanilla cream" },
+    ],
   },
   {
     couple: { firstName: "Njeri Wambui", secondName: "Mwangi Njoroge", initials: "N & M" },
@@ -150,6 +200,22 @@ export const SAMPLE_CONTEXTS: BindingContext[] = [
       rsvpBy: "20 August 2026",
       rsvpUrl: "bookit.co.ke/i/njeri-mwangi",
     },
+    programme: [
+      { time: "11:00", item: "Arrival and welcome" },
+      { time: "11:30", item: "Greetings between the families" },
+      { time: "12:00", item: "Introductions" },
+      { time: "1:00", item: "The ceremony" },
+      { time: "2:30", item: "Lunch is served" },
+      { time: "4:00", item: "Gifts and blessings" },
+      { time: "5:00", item: "Photographs" },
+    ],
+    menu: [
+      { course: "To begin", dish: "Roast maize, chilli and lime" },
+      { course: "From the grill", dish: "Nyama choma, kachumbari" },
+      { course: "Main", dish: "Pilau, chapati, sukuma wiki" },
+      { course: "Alongside", dish: "Githeri, roast sweet potato" },
+      { course: "To finish", dish: "Mandazi and spiced chai" },
+    ],
   },
   {
     couple: { firstName: "Aisha", secondName: "Omar", initials: "A & O" },
@@ -173,6 +239,21 @@ export const SAMPLE_CONTEXTS: BindingContext[] = [
       rsvpBy: "1 June 2026",
       rsvpUrl: "bookit.co.ke/i/aisha-omar",
     },
+    programme: [
+      { time: "4:30", item: "Guests are seated" },
+      { time: "5:00", item: "The ceremony" },
+      { time: "6:00", item: "Photographs by the water" },
+      { time: "7:00", item: "Dinner is served" },
+      { time: "8:30", item: "Speeches and toasts" },
+      { time: "9:30", item: "Dessert and coffee" },
+    ],
+    menu: [
+      { course: "To begin", dish: "Coconut and coriander soup" },
+      { course: "Second", dish: "Grilled octopus, green mango" },
+      { course: "Main", dish: "Whole snapper, tamarind and ginger" },
+      { course: "Alongside", dish: "Coconut rice, spiced greens" },
+      { course: "To finish", dish: "Cardamom custard, roast pineapple" },
+    ],
   },
 ];
 

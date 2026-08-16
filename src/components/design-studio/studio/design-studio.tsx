@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { ArrowLeft, Eye, Redo2, RotateCcw, Undo2 } from "lucide-react";
+import { ArrowLeft, Layers, Redo2, RotateCcw, Undo2 } from "lucide-react";
 import { FONT_PAIRINGS } from "@/domain/design/fonts";
 import type { BindingContext } from "@/domain/design-studio/bindings";
 import { clarification, followUps, starterPrompts } from "@/domain/design-studio/guidance";
@@ -300,11 +300,11 @@ export function DesignStudio({ template, initialPaletteId, initialData }: Design
           </div>
 
           <Link
-            href={`/design/${template.slug}`}
+            href={`/design/${template.slug}/suite`}
             className="hidden h-9 items-center gap-2 rounded-lg border border-line px-3 text-sm font-medium text-ink transition-[background-color,border-color] hover:border-ink/25 hover:bg-surface-secondary sm:inline-flex"
           >
-            <Eye className="size-4" aria-hidden="true" />
-            Preview
+            <Layers className="size-4" aria-hidden="true" />
+            The suite
           </Link>
         </div>
       </header>
