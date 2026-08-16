@@ -87,6 +87,20 @@ export const config = Object.freeze({
     maxUploadBytes: int("MEDIA_MAX_UPLOAD_BYTES", 8 * 1024 * 1024),
   },
 
+  /**
+   * The design assistant's optional model escalation.
+   *
+   * The prompt console resolves in the browser and works with none of this set.
+   * A key only widens the vocabulary: prompts the local interpreter cannot
+   * place are passed to a model, which answers in the same closed operation set
+   * and is validated against it before anything touches a design.
+   */
+  designAssistant: {
+    apiKey: optional("ANTHROPIC_API_KEY"),
+    model: optional("DESIGN_ASSISTANT_MODEL") ?? "claude-sonnet-5",
+    enabled: Boolean(optional("ANTHROPIC_API_KEY")),
+  },
+
   mpesa: {
     environment: (optional("MPESA_ENVIRONMENT") ?? "sandbox") as "sandbox" | "production",
     consumerKey: optional("MPESA_CONSUMER_KEY"),

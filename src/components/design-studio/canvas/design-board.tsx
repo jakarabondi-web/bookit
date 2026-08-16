@@ -7,7 +7,9 @@ import {
   type BookitTemplate,
   type CanvasSizeName,
   type DesignElement,
+  type FontSystem,
   type PaperStock,
+  type TemplatePalette,
 } from "@/domain/design-studio/types";
 import { ElementView } from "./element-renderer";
 
@@ -30,6 +32,16 @@ export interface DesignBoardProps {
    */
   width?: number;
   paletteId?: string | null;
+  /**
+   * A resolved colourway, overriding `paletteId`. The studio passes one because
+   * a nudged palette — "warmer, then deeper" — no longer corresponds to any of
+   * the designer's own colourways.
+   */
+  palette?: TemplatePalette;
+  /** Overrides the template's type system — the studio's working copy. */
+  fonts?: FontSystem;
+  /** Overrides the template's stock. */
+  paper?: PaperStock;
   /** Overrides the template's own elements — the editor's working copy. */
   elements?: DesignElement[];
   size?: CanvasSizeName;
@@ -45,6 +57,9 @@ export function DesignBoard({
   data,
   width,
   paletteId,
+  palette: paletteOverride,
+  fonts,
+  paper,
   elements,
   size,
   className,
@@ -53,8 +68,9 @@ export function DesignBoard({
   children,
 }: DesignBoardProps) {
   const canvas = CANVAS_SIZES[size ?? template.size];
-  const palette = paletteFor(template, paletteId);
+  const palette = paletteOverride ?? paletteFor(template, paletteId);
   const board = elements ?? template.elements;
+  const stock = paper ?? template.paper;
 
   // One board unit as a share of the board's own width. `cqw` resolves against
   // the container below, so every element scales with the board and nothing
@@ -64,7 +80,7 @@ export function DesignBoard({
 
   const context = {
     palette,
-    fonts: template.fontSystem,
+    fonts: fonts ?? template.fontSystem,
     data,
     u,
     pxScale: (width ?? canvas.width) / canvas.width,
@@ -91,7 +107,7 @@ export function DesignBoard({
         <ElementView key={element.id} element={element} context={context} />
       ))}
 
-      {presentation && template.paper !== "none" ? <Paper stock={template.paper} /> : null}
+      {presentation && stock !== "none" ? <Paper stock={stock} /> : null}
       {children}
     </div>
   );
