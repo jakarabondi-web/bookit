@@ -63,6 +63,18 @@ export async function revokeSession(token: string): Promise<void> {
   });
 }
 
+/**
+ * Marks step-up satisfied for this session — the effect of a successful MFA
+ * challenge. `actorForToken` reads `mfaSatisfiedAt` fresh on every request, so
+ * the next request through any route immediately sees `mfaSatisfied: true`.
+ */
+export async function satisfySessionMfa(sessionId: string): Promise<void> {
+  await getPrismaClient().session.update({
+    where: { id: sessionId },
+    data: { mfaSatisfiedAt: new Date() },
+  });
+}
+
 /** Resolves a raw session token to the actor it authenticates, or null. */
 export async function actorForToken(
   token: string,

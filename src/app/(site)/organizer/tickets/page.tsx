@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { formatMoney } from "@/domain/money";
 import type { Event, Ticket } from "@/domain/types";
-import { DEMO_ORGANIZER_ID, getContainer } from "@/server/container";
+import { getContainer } from "@/server/container";
+import { currentOrganizerId } from "@/server/auth/current-user";
 import { Badge } from "@/components/ui/badge";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/states";
@@ -26,7 +27,8 @@ type Row = { ticket: Ticket; event: Event };
 
 export default async function OrganizerTicketsPage() {
   const { catalog, uow } = getContainer();
-  const events = await catalog.organizerEvents(DEMO_ORGANIZER_ID);
+  const organizerId = await currentOrganizerId();
+  const events = await catalog.organizerEvents(organizerId);
 
   const rows: Row[] = [];
   for (const summary of events) {

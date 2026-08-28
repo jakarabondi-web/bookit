@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { behaviourFor } from "@/domain/event-type-policy";
-import { DEMO_ORGANIZER_ID, getContainer } from "@/server/container";
+import { getContainer } from "@/server/container";
+import { currentOrganizerId } from "@/server/auth/current-user";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/states";
@@ -12,7 +13,8 @@ export const metadata: Metadata = { title: "Guest Lists" };
 
 export default async function GuestListsPage() {
   const { catalog } = getContainer();
-  const events = await catalog.organizerEvents(DEMO_ORGANIZER_ID);
+  const organizerId = await currentOrganizerId();
+  const events = await catalog.organizerEvents(organizerId);
 
   const guestDriven = events.filter((summary) => behaviourFor(summary.event.type).guestListDriven);
 

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { AlertTriangle, ShieldCheck } from "lucide-react";
-import { DEMO_ORGANIZER_ID, getContainer } from "@/server/container";
+import { getContainer } from "@/server/container";
+import { currentOrganizerId } from "@/server/auth/current-user";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -19,7 +20,8 @@ const KYC_FIELDS = [
 
 export default async function OrganizerSettingsPage() {
   const { catalog } = getContainer();
-  const organizer = await catalog.organizer(DEMO_ORGANIZER_ID);
+  const organizerId = await currentOrganizerId();
+  const organizer = await catalog.organizer(organizerId);
 
   return (
     <div className="flex flex-col gap-8">

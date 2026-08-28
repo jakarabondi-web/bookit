@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Download } from "lucide-react";
 import { formatMoney } from "@/domain/money";
-import { DEMO_ORGANIZER_ID, getContainer } from "@/server/container";
+import { getContainer } from "@/server/container";
+import { currentOrganizerId } from "@/server/auth/current-user";
 import {
   SEGMENT_LABEL,
   type CustomerProfile,
@@ -34,9 +35,10 @@ export default async function CustomersPage({
   const query = typeof params.q === "string" ? params.q.trim().toLowerCase() : "";
 
   const { crm } = getContainer();
+  const organizerId = await currentOrganizerId();
   const [profiles, summary] = await Promise.all([
-    crm.customers(DEMO_ORGANIZER_ID),
-    crm.summary(DEMO_ORGANIZER_ID),
+    crm.customers(organizerId),
+    crm.summary(organizerId),
   ]);
 
   const rows = profiles.filter((profile) => {

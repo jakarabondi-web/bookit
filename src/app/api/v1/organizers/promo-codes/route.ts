@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { money } from "@/domain/money";
-import { DEMO_ORGANIZER_ID, getContainer } from "@/server/container";
+import { getContainer } from "@/server/container";
+import { currentOrganizerId } from "@/server/auth/current-user";
 import { created, handler, ok, parseBody } from "@/server/http/envelope";
 
 export const dynamic = "force-dynamic";
@@ -19,8 +20,9 @@ const CreateSchema = z.object({
 export const POST = handler(async (request: Request) => {
   const input = await parseBody(request, CreateSchema);
   const { promotions } = getContainer();
+  const organizerId = await currentOrganizerId();
 
-  const promo = await promotions.createPromoCode(DEMO_ORGANIZER_ID, input.eventId, {
+  const promo = await promotions.createPromoCode(organizerId, input.eventId, {
     code: input.code,
     kind: input.kind,
     percentBps: input.percentBps,
@@ -37,6 +39,6 @@ export const POST = handler(async (request: Request) => {
 
 /** GET /api/v1/organizers/promo-codes — every code across your events. */
 export const GET = handler(async () => {
-  const codes = await getContainer().promotions.listPromoCodes(DEMO_ORGANIZER_ID);
+  const codes = await getContainer().promotions.listPromoCodes(await currentOrganizerId());
   return ok(codes, { count: codes.length });
 });

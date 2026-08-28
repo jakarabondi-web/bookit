@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { KeyRound, ShieldCheck, Timer } from "lucide-react";
 import { formatMoney } from "@/domain/money";
 import type { Payout } from "@/domain/types";
-import { DEMO_ORGANIZER_ID, getContainer } from "@/server/container";
+import { getContainer } from "@/server/container";
+import { currentOrganizerId } from "@/server/auth/current-user";
 import { MetricCard } from "@/components/organizer/metric-card";
 import { WithdrawPayoutDialog } from "@/components/organizer/withdraw-payout-dialog";
 import { Badge } from "@/components/ui/badge";
@@ -43,11 +44,12 @@ const CONTROLS = [
 
 export default async function PayoutsPage() {
   const { payouts, uow } = getContainer();
+  const organizerId = await currentOrganizerId();
 
   const [balance, history, organizer] = await Promise.all([
-    payouts.balanceFor(DEMO_ORGANIZER_ID),
-    payouts.listForOrganizer(DEMO_ORGANIZER_ID),
-    uow.repos.organizers.findById(DEMO_ORGANIZER_ID),
+    payouts.balanceFor(organizerId),
+    payouts.listForOrganizer(organizerId),
+    uow.repos.organizers.findById(organizerId),
   ]);
   const destinationMasked = organizer
     ? `M-PESA •••• ${organizer.supportPhone.slice(-4)}`

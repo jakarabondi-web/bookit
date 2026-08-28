@@ -20,14 +20,16 @@ const RequestPayoutSchema = z.object({
 export const POST = handler(async (request: Request) => {
   const input = await parseBody(request, RequestPayoutSchema);
   const { payouts, uow } = getContainer();
+  const actor = await actorFor(request);
+  const organizerId = actor.organizerId ?? DEMO_ORGANIZER_ID;
 
-  const organizer = await uow.repos.organizers.findById(DEMO_ORGANIZER_ID);
+  const organizer = await uow.repos.organizers.findById(organizerId);
   const destinationMasked = organizer
     ? `M-PESA •••• ${organizer.supportPhone.slice(-4)}`
     : "M-PESA on file";
 
-  const payout = await payouts.requestPayout(await actorFor(request), {
-    organizerId: DEMO_ORGANIZER_ID,
+  const payout = await payouts.requestPayout(actor, {
+    organizerId,
     amount: money(input.amountMinor, "KES"),
     destinationMasked,
   });

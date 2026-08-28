@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { formatMoney, money } from "@/domain/money";
-import { DEMO_ORGANIZER_ID, getContainer } from "@/server/container";
+import { getContainer } from "@/server/container";
+import { currentOrganizerId } from "@/server/auth/current-user";
 import { BreakdownBars, DailyBars, ShareBar } from "@/components/organizer/charts";
 import { MetricCard } from "@/components/organizer/metric-card";
 import { Card, CardContent } from "@/components/ui/card";
@@ -26,9 +27,10 @@ const CATEGORY_LABEL: Record<string, string> = {
  */
 export default async function AnalyticsPage() {
   const { catalog } = getContainer();
+  const organizerId = await currentOrganizerId();
   const [analytics, dashboard] = await Promise.all([
-    catalog.organizerAnalytics(DEMO_ORGANIZER_ID),
-    catalog.organizerDashboard(DEMO_ORGANIZER_ID),
+    catalog.organizerAnalytics(organizerId),
+    catalog.organizerDashboard(organizerId),
   ]);
 
   const revenueDelta = delta(analytics.revenue30d.amount, analytics.revenuePrev30d.amount);

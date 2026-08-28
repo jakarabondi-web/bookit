@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowUpRight, ScanLine } from "lucide-react";
-import { DEMO_ORGANIZER_ID, getContainer } from "@/server/container";
+import { getContainer } from "@/server/container";
+import { currentOrganizerId } from "@/server/auth/current-user";
 import type { EventHealth } from "@/server/services/catalog-service";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,10 +25,11 @@ export const metadata: Metadata = { title: "Organizer overview" };
  */
 export default async function OrganizerDashboardPage() {
   const { catalog, payouts, risk } = getContainer();
+  const organizerId = await currentOrganizerId();
 
   const [overview, balance, recentRisk] = await Promise.all([
-    catalog.organizerOverview(DEMO_ORGANIZER_ID),
-    payouts.balanceFor(DEMO_ORGANIZER_ID),
+    catalog.organizerOverview(organizerId),
+    payouts.balanceFor(organizerId),
     risk.listRecent(3),
   ]);
 

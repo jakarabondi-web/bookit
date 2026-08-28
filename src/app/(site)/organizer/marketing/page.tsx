@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Download, Share2 } from "lucide-react";
-import { DEMO_ORGANIZER_ID, getContainer } from "@/server/container";
+import { getContainer } from "@/server/container";
+import { currentOrganizerId } from "@/server/auth/current-user";
 import { SEGMENT_LABEL, SEGMENT_PLAY, type Segment } from "@/server/services/crm-service";
 import { CampaignComposer } from "@/components/organizer/campaign-composer";
 import { PromotionsPanel } from "@/components/organizer/promotions-panel";
@@ -24,12 +25,13 @@ export default async function MarketingPage({
   const preselect = typeof params.segment === "string" ? [params.segment as Segment] : [];
 
   const { catalog, crm, marketing, promotions } = getContainer();
+  const organizerId = await currentOrganizerId();
   const [events, summary, campaigns, promoCodes, affiliateLinks] = await Promise.all([
-    catalog.organizerEvents(DEMO_ORGANIZER_ID),
-    crm.summary(DEMO_ORGANIZER_ID),
-    marketing.listCampaigns(DEMO_ORGANIZER_ID),
-    promotions.listPromoCodes(DEMO_ORGANIZER_ID),
-    promotions.listAffiliateLinks(DEMO_ORGANIZER_ID),
+    catalog.organizerEvents(organizerId),
+    crm.summary(organizerId),
+    marketing.listCampaigns(organizerId),
+    promotions.listPromoCodes(organizerId),
+    promotions.listAffiliateLinks(organizerId),
   ]);
   const now = new Date().toISOString();
   const promotable = events.filter((eventSummary) => eventSummary.event.startsAt >= now);

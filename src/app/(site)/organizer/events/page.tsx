@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { EVENT_TYPE_LABEL } from "@/domain/event-type-policy";
 import type { EventSummary } from "@/domain/types";
-import { DEMO_ORGANIZER_ID, getContainer } from "@/server/container";
+import { getContainer } from "@/server/container";
+import { currentOrganizerId } from "@/server/auth/current-user";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
@@ -23,7 +24,8 @@ const STATUS_TONE: Record<string, "success" | "info" | "neutral" | "error" | "wa
 
 export default async function OrganizerEventsPage() {
   const { catalog } = getContainer();
-  const events = await catalog.organizerEvents(DEMO_ORGANIZER_ID);
+  const organizerId = await currentOrganizerId();
+  const events = await catalog.organizerEvents(organizerId);
 
   const columns: Column<EventSummary>[] = [
     {

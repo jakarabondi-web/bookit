@@ -1,6 +1,6 @@
 import { cookies, headers } from "next/headers";
 import type { ActorContext, User } from "@/domain/types";
-import { DEMO_USER_ID } from "../container";
+import { DEMO_ORGANIZER_ID, DEMO_USER_ID } from "../container";
 import { actorForToken, parseCookieHeader, SESSION_COOKIE } from "./session";
 
 /** For server components and server actions — reads the request's own cookie jar. */
@@ -33,5 +33,18 @@ export async function getSessionUserFromRequest(
 export async function currentUserId(): Promise<string> {
   const session = await getSessionUser();
   return session?.user.id ?? DEMO_USER_ID;
+}
+
+/**
+ * For organizer-area server components and routes: the organizer the
+ * signed-in user belongs to (their first membership — this app doesn't yet
+ * offer switching between several), or the demo organizer's when nobody is
+ * signed in or they haven't created/joined one. The same fallback pattern as
+ * `currentUserId`, so `/organizer/*` keeps showing the demo dataset until a
+ * real organizer exists for this account.
+ */
+export async function currentOrganizerId(): Promise<string> {
+  const session = await getSessionUser();
+  return session?.actor.organizerId ?? DEMO_ORGANIZER_ID;
 }
 

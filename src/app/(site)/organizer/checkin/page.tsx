@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { WifiOff } from "lucide-react";
-import { DEMO_ORGANIZER_ID, getContainer } from "@/server/container";
+import { getContainer } from "@/server/container";
+import { currentOrganizerId } from "@/server/auth/current-user";
 import { CheckinScanner } from "@/components/organizer/checkin-scanner";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/states";
@@ -9,7 +10,8 @@ export const metadata: Metadata = { title: "Check-In" };
 
 export default async function CheckInPage() {
   const { catalog } = getContainer();
-  const events = await catalog.organizerEvents(DEMO_ORGANIZER_ID);
+  const organizerId = await currentOrganizerId();
+  const events = await catalog.organizerEvents(organizerId);
 
   const now = new Date().toISOString();
   const scannable = events

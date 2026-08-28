@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { DEMO_ORGANIZER_ID, getContainer } from "@/server/container";
+import { getContainer } from "@/server/container";
+import { currentOrganizerId } from "@/server/auth/current-user";
 import { created, handler, ok, parseBody } from "@/server/http/envelope";
 import { ALL_SEGMENTS } from "@/server/services/crm-service";
 
@@ -17,7 +18,10 @@ export const POST = handler(async (request: Request) => {
   const input = await parseBody(request, CampaignSchema);
   const { marketing } = getContainer();
 
-  const { campaign, skipped } = await marketing.createCampaign(DEMO_ORGANIZER_ID, input);
+  const { campaign, skipped } = await marketing.createCampaign(
+    await currentOrganizerId(),
+    input,
+  );
 
   return created({
     id: campaign.id,
@@ -29,6 +33,6 @@ export const POST = handler(async (request: Request) => {
 
 /** GET /api/v1/organizers/marketing/campaigns — send history. */
 export const GET = handler(async () => {
-  const campaigns = await getContainer().marketing.listCampaigns(DEMO_ORGANIZER_ID);
+  const campaigns = await getContainer().marketing.listCampaigns(await currentOrganizerId());
   return ok(campaigns, { count: campaigns.length });
 });

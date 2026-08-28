@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { formatMoney, money } from "@/domain/money";
-import { DEMO_ORGANIZER_ID, getContainer } from "@/server/container";
+import { getContainer } from "@/server/container";
+import { currentOrganizerId } from "@/server/auth/current-user";
 import { ACCOUNT } from "@/server/services/ledger-service";
 import { MetricCard } from "@/components/organizer/metric-card";
 import { Badge } from "@/components/ui/badge";
@@ -16,9 +17,10 @@ export const metadata: Metadata = { title: "Finance" };
 
 export default async function FinancePage() {
   const { ledger, payouts, uow } = getContainer();
+  const organizerId = await currentOrganizerId();
 
   const [balance, transactions, accounts] = await Promise.all([
-    payouts.balanceFor(DEMO_ORGANIZER_ID),
+    payouts.balanceFor(organizerId),
     uow.repos.ledger.listTransactions(),
     uow.repos.ledger.listAccounts(),
   ]);

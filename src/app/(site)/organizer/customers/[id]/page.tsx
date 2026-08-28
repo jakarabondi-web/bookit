@@ -3,7 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Mail, Phone, ReceiptText, RotateCcw } from "lucide-react";
 import { formatMoney } from "@/domain/money";
-import { DEMO_ORGANIZER_ID, getContainer } from "@/server/container";
+import { getContainer } from "@/server/container";
+import { currentOrganizerId } from "@/server/auth/current-user";
 import { SEGMENT_PLAY } from "@/server/services/crm-service";
 import { SegmentBadge } from "@/components/organizer/segment-badge";
 import { Button } from "@/components/ui/button";
@@ -21,7 +22,8 @@ export const metadata: Metadata = { title: "Customer" };
 export default async function CustomerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { crm } = getContainer();
-  const record = await crm.customer(DEMO_ORGANIZER_ID, id);
+  const organizerId = await currentOrganizerId();
+  const record = await crm.customer(organizerId, id);
   if (!record) notFound();
 
   const { profile, timeline } = record;

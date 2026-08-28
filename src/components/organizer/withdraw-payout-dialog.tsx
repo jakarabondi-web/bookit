@@ -36,30 +36,67 @@ export function WithdrawPayoutDialog({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  // Set only when the payout request comes back STEP_UP_REQUIRED — the same
+  // request retries automatically once a step-up code is confirmed.
+  const [needsStepUp, setNeedsStepUp] = useState(false);
+  const [stepUpCode, setStepUpCode] = useState("");
 
   const availableMajor = available.amount / 100;
+
+  async function requestPayout() {
+    const response = await fetch("/api/v1/organizers/payouts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ amountMinor: Math.round(Number(amount) * 100) }),
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      if (payload?.error?.code === "STEP_UP_REQUIRED") {
+        setNeedsStepUp(true);
+        return;
+      }
+      setError(payload?.error?.message ?? "Could not request that payout");
+      return;
+    }
+    setSuccess(
+      payload.data.status === "UNDER_REVIEW"
+        ? "Submitted — this one needs a quick review before it moves."
+        : "Payout requested — it will settle within one business day once approved.",
+    );
+    router.refresh();
+  }
 
   async function submit(formEvent: React.FormEvent) {
     formEvent.preventDefault();
     setBusy(true);
     setError(null);
     try {
-      const response = await fetch("/api/v1/organizers/payouts", {
+      await requestPayout();
+    } catch {
+      setError("We could not reach Bookit. Check your connection.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submitStepUp(formEvent: React.FormEvent) {
+    formEvent.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/v1/auth/mfa/step-up", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amountMinor: Math.round(Number(amount) * 100) }),
+        body: JSON.stringify({ code: stepUpCode }),
       });
       const payload = await response.json();
       if (!response.ok) {
-        setError(payload?.error?.message ?? "Could not request that payout");
+        setError(payload?.error?.message ?? "That code didn't match");
         return;
       }
-      setSuccess(
-        payload.data.status === "UNDER_REVIEW"
-          ? "Submitted — this one needs a quick review before it moves."
-          : "Payout requested — it will settle within one business day once approved.",
-      );
-      router.refresh();
+      setNeedsStepUp(false);
+      setStepUpCode("");
+      await requestPayout();
     } catch {
       setError("We could not reach Bookit. Check your connection.");
     } finally {
@@ -73,6 +110,8 @@ export function WithdrawPayoutDialog({
     if (!next) {
       setError(null);
       setSuccess(null);
+      setNeedsStepUp(false);
+      setStepUpCode("");
       setAmount(String(availableMajor));
     }
   }
@@ -104,6 +143,49 @@ export function WithdrawPayoutDialog({
               <Button onClick={() => onOpenChange(false)}>Done</Button>
             </DialogFooter>
           </div>
+        ) : needsStepUp ? (
+          <form onSubmit={submitStepUp} className="flex flex-col gap-4">
+            <p className="text-sm text-ink-secondary">
+              Requesting a payout requires confirming your identity. Enter the current code from
+              your authenticator app.
+            </p>
+            <Field label="6-digit code" htmlFor="payout-stepup-code">
+              <Input
+                id="payout-stepup-code"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+                placeholder="000000"
+                value={stepUpCode}
+                onChange={(changeEvent) =>
+                  setStepUpCode(changeEvent.target.value.replace(/\D/g, ""))
+                }
+                required
+              />
+            </Field>
+            {error ? (
+              <p role="alert" className="text-sm font-medium text-error">
+                {error}
+                {error === "Turn on two-factor authentication first" ? (
+                  <>
+                    {" "}
+                    <a href="/account/profile" className="underline">
+                      Set it up on your profile
+                    </a>
+                    .
+                  </>
+                ) : null}
+              </p>
+            ) : null}
+            <DialogFooter>
+              <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={busy || stepUpCode.length !== 6}>
+                {busy ? "Confirming…" : "Confirm and request payout"}
+              </Button>
+            </DialogFooter>
+          </form>
         ) : (
           <form onSubmit={submit} className="flex flex-col gap-4">
             <dl className="flex justify-between rounded-card-sm bg-surface-secondary p-3 text-sm">

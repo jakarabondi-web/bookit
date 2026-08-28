@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { DEMO_ORGANIZER_ID, getContainer } from "@/server/container";
+import { getContainer } from "@/server/container";
+import { currentOrganizerId } from "@/server/auth/current-user";
 import { created, handler, ok, parseBody } from "@/server/http/envelope";
 
 export const dynamic = "force-dynamic";
@@ -13,8 +14,9 @@ const CreateSchema = z.object({
 export const POST = handler(async (request: Request) => {
   const input = await parseBody(request, CreateSchema);
   const { promotions } = getContainer();
+  const organizerId = await currentOrganizerId();
 
-  const link = await promotions.createAffiliateLink(DEMO_ORGANIZER_ID, input.eventId, {
+  const link = await promotions.createAffiliateLink(organizerId, input.eventId, {
     label: input.label,
   });
 
@@ -23,6 +25,6 @@ export const POST = handler(async (request: Request) => {
 
 /** GET /api/v1/organizers/affiliate-links — every link across your events. */
 export const GET = handler(async () => {
-  const links = await getContainer().promotions.listAffiliateLinks(DEMO_ORGANIZER_ID);
+  const links = await getContainer().promotions.listAffiliateLinks(await currentOrganizerId());
   return ok(links, { count: links.length });
 });

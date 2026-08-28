@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Role } from "@/domain/enums";
-import { DEMO_ORGANIZER_ID, getContainer } from "@/server/container";
+import { getContainer } from "@/server/container";
+import { currentOrganizerId } from "@/server/auth/current-user";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -29,7 +30,8 @@ const ROLE_TONE: Partial<Record<Role, "brand" | "success" | "info" | "neutral">>
 
 export default async function TeamPage() {
   const { catalog, uow } = getContainer();
-  const organizer = await catalog.organizer(DEMO_ORGANIZER_ID);
+  const organizerId = await currentOrganizerId();
+  const organizer = await catalog.organizer(organizerId);
 
   const members = await Promise.all(
     organizer.members.map(async (member) => ({

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { CheckCircle2, ShieldCheck, Smartphone } from "lucide-react";
 import { getContainer } from "@/server/container";
 import { currentUserId } from "@/server/auth/current-user";
+import { DisableMfaButton, EnableMfaButton } from "@/components/account/mfa-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -103,11 +104,7 @@ export default async function ProfilePage() {
                       ? "Enabled"
                       : "Off — required before you can sell high-value tickets."}
                   </p>
-                  {!user.mfaEnabled ? (
-                    <Button size="sm" variant="secondary" disabled title="Not available yet" className="mt-2">
-                      Turn on 2FA
-                    </Button>
-                  ) : null}
+                  {user.mfaEnabled ? <DisableMfaButton /> : <EnableMfaButton />}
                 </div>
               </li>
             </ul>

@@ -1,4 +1,5 @@
-import { DEMO_ORGANIZER_ID, getContainer } from "@/server/container";
+import { getContainer } from "@/server/container";
+import { currentOrganizerId } from "@/server/auth/current-user";
 import { SEGMENT_LABEL, type Segment } from "@/server/services/crm-service";
 
 /**
@@ -11,7 +12,8 @@ export async function GET(request: Request): Promise<Response> {
   const segment = url.searchParams.get("segment") as Segment | null;
 
   const { crm } = getContainer();
-  let profiles = await crm.customers(DEMO_ORGANIZER_ID);
+  const organizerId = await currentOrganizerId();
+  let profiles = await crm.customers(organizerId);
   if (segment) profiles = profiles.filter((profile) => profile.segment === segment);
 
   const header = [

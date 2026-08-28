@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { Booking, Event } from "@/domain/types";
-import { DEMO_ORGANIZER_ID, getContainer } from "@/server/container";
+import { getContainer } from "@/server/container";
+import { currentOrganizerId } from "@/server/auth/current-user";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
@@ -24,7 +25,8 @@ type Row = { booking: Booking; event: Event };
 
 export default async function OrganizerBookingsPage() {
   const { catalog, uow } = getContainer();
-  const events = await catalog.organizerEvents(DEMO_ORGANIZER_ID);
+  const organizerId = await currentOrganizerId();
+  const events = await catalog.organizerEvents(organizerId);
 
   const rows: Row[] = [];
   for (const summary of events) {
