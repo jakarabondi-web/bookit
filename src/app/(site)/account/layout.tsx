@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { getContainer } from "@/server/container";
+import { currentUserId } from "@/server/auth/current-user";
 import { initials } from "@/lib/format";
 import { AccountNav } from "@/components/account/account-nav";
 
 export default async function AccountLayout({ children }: { children: React.ReactNode }) {
   const container = getContainer();
-  const user = await container.uow.repos.users.findById("usr_demo");
+  const user = await container.uow.repos.users.findById(await currentUserId());
 
   return (
     <div className="page-shell py-8 lg:py-12">

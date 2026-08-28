@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
-import { DEMO_USER_ID, getContainer } from "@/server/container";
+import { getContainer } from "@/server/container";
+import { currentUserId } from "@/server/auth/current-user";
 import { CancelListingButton } from "@/components/account/cancel-listing-button";
 import { Badge } from "@/components/ui/badge";
 import { BookitIcon } from "@/components/ui/bookit-icon";
@@ -26,7 +27,7 @@ const STATUS_TONE: Record<string, "success" | "info" | "neutral" | "error" | "wa
 
 export default async function ListingsPage() {
   const { catalog } = getContainer();
-  const rows = await catalog.listingsForUser(DEMO_USER_ID);
+  const rows = await catalog.listingsForUser(await currentUserId());
 
   const columns: Column<Row>[] = [
     {

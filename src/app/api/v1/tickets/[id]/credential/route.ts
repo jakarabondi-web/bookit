@@ -13,7 +13,7 @@ export const GET = handler(
   async (request: Request, context: { params: Promise<{ id: string }> }) => {
     const { id } = await context.params;
     const { tickets } = getContainer();
-    const credential = await tickets.issueCredential(actorFor(request), id);
+    const credential = await tickets.issueCredential(await actorFor(request), id);
 
     const response = ok({
       token: credential.token,

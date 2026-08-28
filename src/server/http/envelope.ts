@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { DomainError, isDomainError } from "@/domain/errors";
 import type { ActorContext } from "@/domain/types";
+import { getSessionUserFromRequest } from "../auth/current-user";
 import { currentActor, currentOrganizerActor } from "../container";
 
 /**
@@ -100,18 +101,23 @@ export function pagination(request: Request): { cursor: string | null; limit: nu
 /**
  * Resolves the acting principal for a request.
  *
- * The session model, token verification and MFA assurance are specified in
- * `docs/ARCHITECTURE.md` and modelled in the Prisma schema; until the auth
- * provider is wired up this returns the demo consumer, or the demo organizer
- * for `/organizer` endpoints, so authorization checks in the services still run
- * against a real actor rather than being bypassed.
+ * A valid session cookie resolves to the signed-in user's real actor context.
+ * Organizer-scoped endpoints only pick up a real actor when that user belongs
+ * to an organizer (see `actorForToken`); otherwise — and for every
+ * unauthenticated request — this falls back to the demo actor, so the app's
+ * browsing experience and authorization checks keep working exactly as before
+ * for a visitor who hasn't signed in.
  */
-export function actorFor(request: Request): ActorContext {
+export async function actorFor(request: Request): Promise<ActorContext> {
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
   const url = new URL(request.url);
   const isOrganizerScope = url.pathname.includes("/organizers/");
+
+  const session = await getSessionUserFromRequest(request);
+  if (session && (!isOrganizerScope || session.actor.organizerId)) {
+    return { ...session.actor, ip };
+  }
+
   const base = isOrganizerScope ? currentOrganizerActor() : currentActor();
-  return {
-    ...base,
-    ip: request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null,
-  };
+  return { ...base, ip };
 }

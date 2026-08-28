@@ -22,7 +22,7 @@ const ListingSchema = z.object({
 export const POST = handler(async (request: Request) => {
   const input = await parseBody(request, ListingSchema);
 
-  const listing = await getContainer().resale.createListing(actorFor(request), {
+  const listing = await getContainer().resale.createListing(await actorFor(request), {
     ticketId: input.ticketId,
     askPrice: money(input.askPriceMinor, "KES"),
   });
@@ -38,7 +38,7 @@ export const POST = handler(async (request: Request) => {
 
 /** GET /api/v1/listings — the signed-in user's own listings. */
 export const GET = handler(async (request: Request) => {
-  const actor = actorFor(request);
+  const actor = await actorFor(request);
   const listings = await getContainer().resale.listForSeller(actor.userId ?? "");
   return ok(listings, { count: listings.length });
 });

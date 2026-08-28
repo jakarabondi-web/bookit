@@ -6,6 +6,7 @@ import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { CITIES } from "@/lib/cities";
+import { SignOutButton } from "./sign-out-button";
 
 const LINKS = [
   { href: "/events?view=discover", label: "Discover" },
@@ -22,7 +23,11 @@ const ACCOUNT_LINKS = [
   { href: "/account/profile", label: "Profile" },
 ];
 
-export function MobileNav() {
+export function MobileNav({
+  signedIn,
+}: {
+  signedIn: { fullName: string; email: string } | null;
+}) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -94,16 +99,27 @@ export function MobileNav() {
         </nav>
 
         <div className="mt-8 flex flex-col gap-2">
-          <Button asChild block>
-            <Link href="/account" onClick={() => setOpen(false)}>
-              Sign Up
-            </Link>
-          </Button>
-          <Button variant="secondary" asChild block>
-            <Link href="/account" onClick={() => setOpen(false)}>
-              Log in
-            </Link>
-          </Button>
+          {signedIn ? (
+            <>
+              <p className="px-1 text-sm text-ink-secondary">
+                Signed in as <span className="font-medium text-ink">{signedIn.fullName}</span>
+              </p>
+              <SignOutButton block />
+            </>
+          ) : (
+            <>
+              <Button asChild block>
+                <Link href="/signup" onClick={() => setOpen(false)}>
+                  Sign Up
+                </Link>
+              </Button>
+              <Button variant="secondary" asChild block>
+                <Link href="/login" onClick={() => setOpen(false)}>
+                  Log in
+                </Link>
+              </Button>
+            </>
+          )}
         </div>
       </SheetContent>
     </Sheet>

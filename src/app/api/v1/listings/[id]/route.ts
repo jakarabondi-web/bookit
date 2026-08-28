@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 export const DELETE = handler(
   async (request: Request, context: { params: Promise<{ id: string }> }) => {
     const { id } = await context.params;
-    const listing = await getContainer().resale.cancelListing(actorFor(request), id);
+    const listing = await getContainer().resale.cancelListing(await actorFor(request), id);
     return ok({ id: listing.id, status: listing.status });
   },
 );

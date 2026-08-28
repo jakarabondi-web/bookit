@@ -22,7 +22,7 @@ export const POST = handler(
     const { id } = await context.params;
     const { toEmail } = await parseBody(request, TransferSchema);
 
-    const transfer = await getContainer().tickets.initiateTransfer(actorFor(request), {
+    const transfer = await getContainer().tickets.initiateTransfer(await actorFor(request), {
       ticketId: id,
       toEmail,
     });

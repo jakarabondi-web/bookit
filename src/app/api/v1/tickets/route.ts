@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 /** GET /api/v1/tickets — tickets owned by the signed-in user. */
 export const GET = handler(async (request: Request) => {
-  const actor = actorFor(request);
+  const actor = await actorFor(request);
   const { catalog } = getContainer();
   const rows = await catalog.ticketsForUser(actor.userId ?? "");
 

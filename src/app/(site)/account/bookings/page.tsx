@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { BookingStatus } from "@/domain/enums";
-import { DEMO_USER_ID, getContainer } from "@/server/container";
+import { getContainer } from "@/server/container";
+import { currentUserId } from "@/server/auth/current-user";
 import { BookingCard } from "@/components/account/booking-card";
 import { BookitIcon } from "@/components/ui/bookit-icon";
 import { EmptyState } from "@/components/ui/states";
@@ -10,8 +11,9 @@ export const metadata: Metadata = { title: "My Bookings" };
 
 export default async function AccountBookingsPage() {
   const { catalog, uow } = getContainer();
-  const user = await uow.repos.users.findById(DEMO_USER_ID);
-  const rows = await catalog.bookingsForUser(DEMO_USER_ID, user?.email);
+  const userId = await currentUserId();
+  const user = await uow.repos.users.findById(userId);
+  const rows = await catalog.bookingsForUser(userId, user?.email);
   const now = new Date().toISOString();
 
   const cancelled = rows.filter(

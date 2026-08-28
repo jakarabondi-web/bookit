@@ -6,6 +6,8 @@ import { MpesaProvider } from "./payments/mpesa-provider";
 import type { PaymentProvider } from "./payments/provider";
 import { createMemoryUnitOfWork } from "./repositories/memory/unit-of-work";
 import { emptyDb } from "./repositories/memory/store";
+import { getPrismaClient } from "./repositories/prisma/client";
+import { createPrismaUnitOfWork } from "./repositories/prisma/unit-of-work";
 import type { UnitOfWork } from "./repositories/types";
 import { DEMO_ORGANIZER_ID, DEMO_USER_ID, seedDatabase } from "./seed/seed-data";
 import { AuditService } from "./services/audit-service";
@@ -60,11 +62,19 @@ export interface Container {
 export function createContainer(options: { seed?: boolean } = {}): Container {
   const clock = systemClock;
 
-  // With DATABASE_URL set this is where the Prisma unit of work is constructed
-  // instead; every service below is unchanged by that swap.
-  const db = emptyDb();
-  if (options.seed !== false) seedDatabase(db);
-  const uow = createMemoryUnitOfWork(db);
+  // With DATABASE_URL set, repositories run against PostgreSQL via Prisma —
+  // every service below is unchanged by the swap. `seed: false` (the test
+  // fixture) always gets an isolated in-memory store, never the shared
+  // database. First-boot seeding of PostgreSQL happens in
+  // `src/instrumentation.ts`, before the server takes requests.
+  let uow: UnitOfWork;
+  if (config.databaseUrl && options.seed !== false) {
+    uow = createPrismaUnitOfWork(getPrismaClient());
+  } else {
+    const db = emptyDb();
+    if (options.seed !== false) seedDatabase(db);
+    uow = createMemoryUnitOfWork(db);
+  }
 
   const audit = new AuditService(uow.repos.audit, clock);
   const risk = new RiskService(uow.repos.risk, clock);

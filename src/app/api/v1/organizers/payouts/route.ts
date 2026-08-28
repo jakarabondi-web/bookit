@@ -26,7 +26,7 @@ export const POST = handler(async (request: Request) => {
     ? `M-PESA •••• ${organizer.supportPhone.slice(-4)}`
     : "M-PESA on file";
 
-  const payout = await payouts.requestPayout(actorFor(request), {
+  const payout = await payouts.requestPayout(await actorFor(request), {
     organizerId: DEMO_ORGANIZER_ID,
     amount: money(input.amountMinor, "KES"),
     destinationMasked,

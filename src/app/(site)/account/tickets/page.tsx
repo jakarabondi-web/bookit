@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { TicketStatus } from "@/domain/enums";
-import { DEMO_USER_ID, getContainer } from "@/server/container";
+import { getContainer } from "@/server/container";
+import { currentUserId } from "@/server/auth/current-user";
 import { TicketCard } from "@/components/account/ticket-card";
 import { BookitIcon } from "@/components/ui/bookit-icon";
 import { EmptyState } from "@/components/ui/states";
@@ -10,7 +11,7 @@ export const metadata: Metadata = { title: "My Tickets" };
 
 export default async function TicketsPage() {
   const { catalog } = getContainer();
-  const rows = await catalog.ticketsForUser(DEMO_USER_ID);
+  const rows = await catalog.ticketsForUser(await currentUserId());
   const now = new Date().toISOString();
 
   const active = rows.filter(

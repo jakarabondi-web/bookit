@@ -31,7 +31,7 @@ export const POST = handler(async (request: Request) => {
   const body = await parseBody(request, BookingSchema);
   const { bookings } = getContainer();
 
-  const booking = await bookings.createBooking(actorFor(request), {
+  const booking = await bookings.createBooking(await actorFor(request), {
     ...body,
     occurrenceId: body.occurrenceId ?? null,
   });
@@ -47,7 +47,7 @@ export const POST = handler(async (request: Request) => {
 
 /** GET /api/v1/bookings — the signed-in user's bookings. */
 export const GET = handler(async (request: Request) => {
-  const actor = actorFor(request);
+  const actor = await actorFor(request);
   const { catalog, uow } = getContainer();
   const user = actor.userId ? await uow.repos.users.findById(actor.userId) : null;
   const rows = await catalog.bookingsForUser(actor.userId ?? "", user?.email);

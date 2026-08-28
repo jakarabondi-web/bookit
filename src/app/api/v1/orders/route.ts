@@ -35,7 +35,7 @@ export const POST = handler(async (request: Request) => {
   const body = await parseBody(request, CheckoutSchema);
   const { checkout } = getContainer();
 
-  const result = await checkout.startCheckout(actorFor(request), {
+  const result = await checkout.startCheckout(await actorFor(request), {
     ...body,
     idempotencyKey: request.headers.get("idempotency-key") ?? undefined,
   });

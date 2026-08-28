@@ -23,7 +23,7 @@ const ScanSchema = z.union([
 export const POST = handler(async (request: Request) => {
   const body = await parseBody(request, ScanSchema);
   const { checkin } = getContainer();
-  const actor = actorFor(request);
+  const actor = await actorFor(request);
 
   const result =
     body.mode === "credential"

@@ -23,7 +23,7 @@ export const DELETE = handler(
       reason = parsed.reason;
     }
 
-    const booking = await getContainer().bookings.cancelBooking(actorFor(request), id, reason);
+    const booking = await getContainer().bookings.cancelBooking(await actorFor(request), id, reason);
     return ok({ id: booking.id, status: booking.status });
   },
 );

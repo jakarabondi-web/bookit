@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { CheckCircle2, ShieldCheck, Smartphone } from "lucide-react";
-import { DEMO_USER_ID, getContainer } from "@/server/container";
+import { getContainer } from "@/server/container";
+import { currentUserId } from "@/server/auth/current-user";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,7 +12,7 @@ export const metadata: Metadata = { title: "Profile" };
 
 export default async function ProfilePage() {
   const { uow } = getContainer();
-  const user = await uow.repos.users.findById(DEMO_USER_ID);
+  const user = await uow.repos.users.findById(await currentUserId());
   if (!user) return null;
 
   return (

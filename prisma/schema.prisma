@@ -11,9 +11,11 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// The connection URL lives in `prisma.config.ts` (CLI) and the pg driver
+// adapter constructed in `src/server/repositories/prisma/client.ts` (runtime) —
+// Prisma 7 no longer reads it from this file.
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 /* -------------------------------------------------------------------------- */
@@ -571,8 +573,9 @@ model InventoryUnit {
   ticketTypeId String
   ticketType   TicketType     @relation(fields: [ticketTypeId], references: [id], onDelete: Cascade)
   state        InventoryState @default(AVAILABLE)
+  /// Plain column, not a foreign key: units are locked against a hold id
+  /// *before* the hold row is created inside the same transaction.
   holdId       String?
-  hold         TicketHold?    @relation(fields: [holdId], references: [id])
   ticketId     String?        @unique
   ticket       Ticket?        @relation(fields: [ticketId], references: [id])
   seatLabel    String?
@@ -584,14 +587,16 @@ model InventoryUnit {
 
 model TicketHold {
   id         String    @id @default(cuid())
+  /// Plain column, not a foreign key: the hold is created *before* its order
+  /// inside the checkout transaction.
   orderId    String    @unique
-  order      Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
   eventId    String
+  /// The units this hold reserved, kept even after release — `InventoryUnit.holdId`
+  /// is cleared when units go back to AVAILABLE.
+  unitIds    String[]  @default([])
   expiresAt  DateTime
   releasedAt DateTime?
   createdAt  DateTime  @default(now())
-
-  units InventoryUnit[]
 
   @@index([expiresAt, releasedAt])
 }
@@ -692,10 +697,15 @@ model Order {
   eventId        String
   event          Event       @relation(fields: [eventId], references: [id])
   subtotalAmount BigInt
+  /// Informational: what a promo code took off the raw ticket total.
+  discountAmount BigInt      @default(0)
+  promoCodeId    String?
   feesAmount     BigInt
   totalAmount    BigInt
   currency       String      @default("KES")
   status         OrderStatus @default(CREATED)
+  /// Plain column mirror of the hold that reserved this order's inventory.
+  holdId         String?
   /// Client-supplied key making checkout retries safe.
   idempotencyKey String?     @unique
   createdAt      DateTime    @default(now())
@@ -703,7 +713,6 @@ model Order {
   updatedAt      DateTime    @updatedAt
 
   items    OrderItem[]
-  hold     TicketHold?
   tickets  Ticket[]
   payments Payment[]
   refunds  Refund[]
@@ -1057,6 +1066,8 @@ model Contribution {
   receivedAmount  BigInt             @default(0)
   currency        String             @default("KES")
   status          ContributionStatus @default(PLEDGED)
+  method          PaymentMethod?
+  reference       String?
   createdAt       DateTime           @default(now())
 
   payments ContributionPayment[]
@@ -1080,29 +1091,109 @@ model ContributionPayment {
 /* -------------------------------------------------------------------------- */
 
 model PromoCode {
-  id            String    @id @default(cuid())
-  eventId       String
-  event         Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  code          String
-  discountBps   Int?
-  discountFixed BigInt?
-  currency      String    @default("KES")
-  maxRedemptions Int?
-  redeemedCount Int       @default(0)
-  startsAt      DateTime?
-  endsAt        DateTime?
+  id              String    @id @default(cuid())
+  organizerId     String
+  eventId         String
+  event           Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  /// Stored normalized (uppercase); repositories never reinterpret it.
+  code            String
+  kind            String
+  percentBps      Int?
+  fixedAmount     BigInt?
+  currency        String    @default("KES")
+  maxRedemptions  Int?
+  redemptionCount Int       @default(0)
+  startsAt        DateTime
+  endsAt          DateTime?
+  disabledAt      DateTime?
+  createdAt       DateTime  @default(now())
 
   @@unique([eventId, code])
+  @@index([organizerId, createdAt])
 }
 
 model AffiliateLink {
   id          String   @id @default(cuid())
+  organizerId String
   eventId     String
   code        String   @unique
-  ownerUserId String?
-  clicks      Int      @default(0)
-  conversions Int      @default(0)
+  label       String
+  clickCount  Int      @default(0)
   createdAt   DateTime @default(now())
+
+  @@index([eventId])
+  @@index([organizerId, createdAt])
+}
+
+/* -------------------------------------------------------------------------- */
+/* CRM campaigns                                                               */
+/* -------------------------------------------------------------------------- */
+
+model Campaign {
+  id             String   @id @default(cuid())
+  organizerId    String
+  /// RFM segment keys frozen at send time, e.g. ["CHAMPION", "LOYAL"].
+  segments       String[] @default([])
+  channel        String
+  subject        String
+  body           String
+  recipientCount Int      @default(0)
+  sentByUserId   String?
+  sentAt         DateTime @default(now())
+
+  @@index([organizerId, sentAt])
+}
+
+/* -------------------------------------------------------------------------- */
+/* Private-event microsites                                                    */
+/* -------------------------------------------------------------------------- */
+
+/// The microsite content for a private event — hosts, programme, travel, FAQ,
+/// e-card design and RSVP settings. Content-heavy and read/written as one
+/// aggregate, so it is stored whole as JSON keyed by event.
+model PrivateEventPage {
+  eventId String @id
+  content Json
+}
+
+model GiftItem {
+  id        String  @id
+  eventId   String
+  sortOrder Int     @default(0)
+  archived  Boolean @default(false)
+  content   Json
+
+  @@index([eventId, sortOrder])
+}
+
+model GiftClaim {
+  id        String   @id
+  giftId    String
+  eventId   String
+  inviteId  String?
+  claimedAt DateTime
+  content   Json
+
+  @@index([eventId, claimedAt])
+  @@index([inviteId])
+}
+
+model Broadcast {
+  id      String   @id
+  eventId String
+  sentAt  DateTime
+  content Json
+
+  @@index([eventId, sentAt])
+}
+
+model GuestMessage {
+  id        String   @id
+  eventId   String
+  createdAt DateTime
+  content   Json
+
+  @@index([eventId, createdAt])
 }
 
 /* -------------------------------------------------------------------------- */

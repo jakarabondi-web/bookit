@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BookingStatus, TicketStatus } from "@/domain/enums";
-import { DEMO_USER_ID, getContainer } from "@/server/container";
+import { getContainer } from "@/server/container";
+import { currentUserId } from "@/server/auth/current-user";
 import { BookingCard } from "@/components/account/booking-card";
 import { BookitIcon, type BookitIconName } from "@/components/ui/bookit-icon";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,12 +12,13 @@ export const metadata: Metadata = { title: "Account" };
 
 export default async function AccountOverviewPage() {
   const { catalog, uow } = getContainer();
-  const user = await uow.repos.users.findById(DEMO_USER_ID);
+  const userId = await currentUserId();
+  const user = await uow.repos.users.findById(userId);
 
   const [tickets, bookings, listings] = await Promise.all([
-    catalog.ticketsForUser(DEMO_USER_ID),
-    catalog.bookingsForUser(DEMO_USER_ID, user?.email),
-    catalog.listingsForUser(DEMO_USER_ID),
+    catalog.ticketsForUser(userId),
+    catalog.bookingsForUser(userId, user?.email),
+    catalog.listingsForUser(userId),
   ]);
 
   const now = new Date().toISOString();

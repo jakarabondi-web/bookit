@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 export const DELETE = handler(
   async (request: Request, context: { params: Promise<{ id: string }> }) => {
     const { id } = await context.params;
-    const transfer = await getContainer().tickets.cancelTransfer(actorFor(request), id);
+    const transfer = await getContainer().tickets.cancelTransfer(await actorFor(request), id);
     return ok({ id: transfer.id, status: transfer.status });
   },
 );
