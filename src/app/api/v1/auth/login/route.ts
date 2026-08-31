@@ -15,6 +15,13 @@ const LoginSchema = z.object({
 
 const INVALID_CREDENTIALS = "That email or password isn't right";
 
+// A fixed hash that never matches any real password. Verifying against this
+// when the account doesn't exist (or has no password set) makes the unknown
+// path pay the same scrypt cost as the known-account path, so response time
+// can't be used to tell the two apart — see the comment below on `valid`.
+const DUMMY_PASSWORD_HASH =
+  "scrypt:626f6f6b69742d66697865642d64756d:c403b3c9d1a8959e3b4b285efb7e4279a1e2ce8da834e3ff0690bfb6c4775ef15887c79956baea431db81db4a35bf1570f803e03ee4db5d14a52d25618f2f407";
+
 /** POST /api/v1/auth/login — verify a password and start a session. */
 export const POST = handler(async (request: Request) => {
   if (!config.databaseUrl) {
@@ -31,11 +38,11 @@ export const POST = handler(async (request: Request) => {
 
   // Same rejection whether the email is unknown or the password is wrong —
   // telling them apart would let an attacker enumerate registered emails.
-  if (!record || !record.passwordHash || record.disabledAt) {
-    throw new DomainError("CREDENTIAL_INVALID", INVALID_CREDENTIALS);
-  }
-  const valid = await verifyPassword(body.password, record.passwordHash);
-  if (!valid) {
+  // That has to hold for timing too: always run the real scrypt comparison,
+  // against a fixed decoy hash when there's no account to check against, so
+  // an unknown email doesn't return measurably faster than a wrong password.
+  const valid = await verifyPassword(body.password, record?.passwordHash ?? DUMMY_PASSWORD_HASH);
+  if (!record || !record.passwordHash || record.disabledAt || !valid) {
     throw new DomainError("CREDENTIAL_INVALID", INVALID_CREDENTIALS);
   }
 
